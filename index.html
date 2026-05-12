@@ -34,6 +34,42 @@
         </div>
       </section>
 
+      <details class="panel model-sandbox">
+        <summary>
+          <div>
+            <h2>Model sandbox</h2>
+            <p>Optional demo for testing another LLM without changing the app's analysis contract.</p>
+          </div>
+        </summary>
+        <div class="sandbox-grid">
+          <label>
+            Provider
+            <select id="overrideEngine">
+              <option value="auto">Default backend auto</option>
+              <option value="minimax-compatible">MiniMax compatible</option>
+              <option value="openai-compatible">OpenAI compatible</option>
+              <option value="anthropic-compatible">Anthropic compatible</option>
+            </select>
+          </label>
+          <label>
+            Model
+            <input id="overrideModel" placeholder="MiniMax-M2.7 or gpt-4.1-mini" />
+          </label>
+          <label>
+            Base URL
+            <input id="overrideBaseUrl" placeholder="https://api.minimax.io/v1" />
+          </label>
+          <label>
+            Session API key
+            <input id="overrideApiKey" type="password" autocomplete="off" placeholder="Used once, not saved" />
+          </label>
+        </div>
+        <p class="sandbox-note">
+          The visible workflow stays the same. RAG, source conflict checks, and the required JSON answer format remain fixed by the app.
+          A paid-question flow can be added later by putting checkout in front of this relay.
+        </p>
+      </details>
+
       <section class="dashboard-grid utility-dock">
         <article class="panel stat-panel">
           <span class="stat-label">Documents</span>

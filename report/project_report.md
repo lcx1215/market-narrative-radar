@@ -54,6 +54,10 @@ The LLM layer is optional and replaceable. The static app runs with local transp
 
 The app also includes a defensive answer pattern for open-ended or unusual user questions. If retrieval evidence is thin, the system should lower confidence, state what the evidence does not support, and list missing source material rather than turning weak text matches into strong conclusions.
 
+The P1 build adds a source conflict detector. Before the LLM layer runs, the app compares evidence by source role: company or executive text, regulator text, policymaker text, macro research text, and media text. A conflict signal is created when the same theme is framed differently across these roles, for example when a company-facing source emphasizes growth or opportunity while a public authority source emphasizes risk, enforcement, compliance, or uncertainty. The detector does not claim that one side is correct. It marks the framing gap as something the analyst memo should discuss and verify.
+
+The connected model is therefore not asked to think from scratch. It receives a fixed analysis contract, retrieved evidence, precomputed conflict candidates, and strict output fields. This makes the model replaceable: MiniMax, OpenAI-compatible APIs, Anthropic, Ollama, or local fallback can all fill the same structured contract.
+
 ## Findings From the Current Build
 
 The demo corpus initially emphasizes congressional and policy language, which pushes macro and regulation themes to the top. After live fetching, the source mix expands to include company filings, regulators, central banks, and research blogs. This changes the evidence table: the top retrieved passages include policy text, Federal Register text about data center growth, SEC filing language, and Federal Reserve speech text. The app therefore demonstrates one of its main analytical goals: source composition changes the observed narrative.

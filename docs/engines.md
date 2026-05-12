@@ -90,3 +90,21 @@ The frontend uses an `auto` backend engine. The relay checks configured provider
 MiniMax, OpenAI-compatible, Anthropic, Ollama, then local fallback.
 
 The repository includes `server/llm_relay.py` as a minimal relay implementation. It supports local fallback summaries, OpenAI-compatible chat completions, MiniMax OpenAI-compatible chat completions, Anthropic messages, and Ollama generate endpoints.
+
+The UI also includes a closed-by-default model sandbox for open-source users who want to try their own provider key. That key is sent only with the current request and is not stored by the frontend. The fixed analysis contract still controls the output schema, source conflict handling, and research boundary.
+
+## 4. Long-Task DAG
+
+The app's intended long-task structure is:
+
+| Stage | Purpose |
+| --- | --- |
+| Question parse | Convert strange or broad user questions into searchable text intent. |
+| Source refresh | Pull free public sources through `server/data_relay.py`. |
+| RAG retrieval | Rank sentence-level evidence by query overlap, theme match, risk language, and source diversity. |
+| Source conflict detection | Compare company, regulator, policymaker, macro research, and media framing. |
+| LLM analysis | Ask the selected model to fill the fixed analyst JSON contract. |
+| Validation | Fall back to local transparent NLP if the relay or provider fails. |
+| Memo rendering | Show a concise analyst memo first; keep raw JSON and evidence available behind disclosures. |
+
+This DAG is the part that teaches a user's LLM how to think. The model provider can change, but the reasoning shape remains fixed.

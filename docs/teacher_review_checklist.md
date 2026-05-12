@@ -33,8 +33,9 @@ Expected behavior:
 - The interface only asks for a question and an `Analyze` click.
 - No API key is requested in the browser.
 - The answer is an analyst memo, not a trade recommendation.
-- The memo separates direct claims, possible implications, source tension, risk flags, missing evidence, and watch items.
+- The memo separates direct claims, possible implications, source conflicts, source tension, risk flags, missing evidence, and watch items.
 - `Evidence and sources` expands to show the passages used for the answer.
+- `Model sandbox` is optional and closed by default; the main demo does not require a browser API key.
 
 ## Why This Fits Text as Data
 
@@ -44,6 +45,7 @@ The project treats public documents as a corpus. It performs:
 - dictionary-based theme scoring,
 - risk-language scoring,
 - sentence-level evidence retrieval,
+- source conflict detection,
 - source comparison,
 - structured evidence-grounded interpretation,
 - reproducible packaging and documentation.

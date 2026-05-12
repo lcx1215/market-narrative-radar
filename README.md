@@ -16,6 +16,7 @@ It is not a trading system. It does not forecast returns, produce price targets,
 - Reports token volume, lexical diversity, readability, source diversity, and freshness.
 - Retrieves evidence passages for a user question.
 - Supports structured analyst mode for explicit claims, implicit signals, contradictions, narrative shifts, source tensions, risk flags, hedging language, missing evidence, and watch items.
+- Detects source conflicts where companies, executives, regulators, policymakers, macro research, and media frame the same theme differently.
 - Audits each brief by counting cited passages, documents, source types, and references.
 - Keeps advanced import, export, filter, and source diagnostics in the code path without making the main interface busy.
 - Keeps LLM providers behind a replaceable backend relay.
@@ -62,7 +63,7 @@ The demo corpus in `data/corpus.json` is only a fallback and reproducibility dat
 
 ## LLM and Key Handling
 
-The browser never asks the user for an API key. The frontend calls a local backend relay at `/api/analyze`. Provider keys live only in local environment variables such as `.env`, which is ignored by Git.
+The main workflow never asks the user for an API key. The frontend calls a local backend relay at `/api/analyze`. Provider keys live only in local environment variables such as `.env`, which is ignored by Git.
 
 The relay uses an `auto` engine:
 
@@ -73,6 +74,21 @@ The relay uses an `auto` engine:
 5. Fall back to the local transparent analyst engine.
 
 This means the project can be opened publicly on GitHub without exposing private keys, and the model provider can be replaced later without rewriting the app.
+
+There is also a closed-by-default model sandbox for open-source users who want to test their own provider key. It is a demo path: the key is used for the current request and is not stored. A future paid-question version can put checkout in front of the same relay while keeping the analysis contract unchanged.
+
+## Analysis Contract
+
+The app is not a free-form chatbot. It teaches whichever model is connected to follow the same process:
+
+1. Parse the question.
+2. Refresh public sources.
+3. Retrieve evidence.
+4. Detect source conflicts.
+5. Fill the fixed analyst JSON schema.
+6. Render a concise memo and keep evidence auditable.
+
+See `docs/analysis_contract.md` for the full contract.
 
 ## Run Locally
 
@@ -142,6 +158,7 @@ python3 scripts/validate_project.py
 - `scripts/validate_project.py`: package validation.
 - `report/project_report.md`: research report.
 - `docs/teacher_review_checklist.md`: short grading/demo checklist.
+- `docs/analysis_contract.md`: fixed RAG/tool/DAG reasoning contract.
 - `docs/replication_package.md`: replication instructions.
 - `docs/data_dictionary.md`: data schema.
 - `docs/engines.md`: data and LLM engine documentation.

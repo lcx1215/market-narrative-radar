@@ -167,6 +167,37 @@ const DATA_SOURCE_ENGINES = [
 const ANALYSIS_ENGINE = "auto";
 const LLM_RELAY_ENDPOINT = "http://127.0.0.1:8787/api/analyze";
 const DATA_RELAY_ENDPOINT = "http://127.0.0.1:8790/api/live-sources";
+const ANALYSIS_CONTRACT = {
+  pipeline: [
+    "classify_question",
+    "refresh_public_sources",
+    "retrieve_evidence",
+    "score_source_conflicts",
+    "call_analysis_engine",
+    "validate_json_shape",
+    "render_memo_with_evidence",
+  ],
+  required_fields: [
+    "executive_read",
+    "explicit_claims",
+    "implicit_signals",
+    "source_conflicts",
+    "source_tensions",
+    "contradictions",
+    "risk_flags",
+    "missing_evidence",
+    "watch_items",
+    "confidence",
+    "evidence_citations",
+  ],
+  answer_rules: [
+    "Use retrieved evidence only.",
+    "Tie implications to source text.",
+    "Separate direct claims from interpretation.",
+    "Lower confidence when evidence is thin or source coverage is narrow.",
+    "Do not provide trading recommendations, price targets, or portfolio instructions.",
+  ],
+};
 
 let corpus = [];
 let activeEvidence = [];
@@ -441,6 +472,130 @@ function retrieveEvidence(docs, question = "") {
   return selected;
 }
 
+function sourceRole(sourceType = "") {
+  const source = sourceType.toLowerCase();
+  if (/company|filing|executive|transcript|earnings/.test(source)) return "company";
+  if (/regulator|federal register|ftc|doj|cftc|sec/.test(source)) return "regulator";
+  if (/federal reserve|fed|research blog|ny fed/.test(source)) return "macro_research";
+  if (/congress|senate|house|committee/.test(source)) return "policymaker";
+  if (/news|media|gdelt/.test(source)) return "media";
+  return "other";
+}
+
+function stanceProfile(text = "") {
+  const lower = text.toLowerCase();
+  const countAny = (terms) => terms.reduce((sum, term) => sum + (lower.includes(term) ? 1 : 0), 0);
+  const risk = countAny(["risk", "uncertain", "volatility", "pressure", "challenge", "litigation", "shortage", "slowdown"]);
+  const opportunity = countAny(["growth", "opportunity", "strong", "demand", "investment", "benefit", "innovation", "resilient"]);
+  const enforcement = countAny(["rule", "regulation", "antitrust", "compliance", "investigation", "enforcement", "proposed"]);
+  const discipline = countAny(["margin", "cost", "efficiency", "discipline", "roi", "utilization", "pricing"]);
+  return { risk, opportunity, enforcement, discipline };
+}
+
+function conflictOverlap(left, right) {
+  const stop = new Set([
+    "this",
+    "that",
+    "and",
+    "the",
+    "for",
+    "not",
+    "are",
+    "was",
+    "were",
+    "has",
+    "had",
+    "but",
+    "our",
+    "you",
+    "they",
+    "them",
+    "into",
+    "also",
+    "only",
+    "more",
+    "with",
+    "from",
+    "have",
+    "will",
+    "which",
+    "their",
+    "there",
+    "these",
+    "those",
+    "subject",
+    "within",
+    "source",
+    "statement",
+    "statements",
+    "forward",
+    "looking",
+  ]);
+  const leftTokens = new Set(tokenize(`${left.doc.title || ""} ${left.sentence || ""}`).filter((token) => !stop.has(token)));
+  const rightTokens = tokenize(`${right.doc.title || ""} ${right.sentence || ""}`).filter((token) => !stop.has(token));
+  return rightTokens.reduce((sum, token) => sum + (leftTokens.has(token) ? 1 : 0), 0);
+}
+
+function detectSourceConflicts(evidence) {
+  const grouped = new Map();
+  evidence.forEach((item, index) => {
+    const key = item.theme || "Unknown";
+    const role = sourceRole(item.doc.source_type);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({
+      ...item,
+      evidence_index: index + 1,
+      role,
+      stance: stanceProfile(`${item.doc.title || ""} ${item.sentence || ""}`),
+    });
+  });
+
+  const conflicts = [];
+  for (const [theme, rows] of grouped.entries()) {
+    const company = rows.find((row) => row.role === "company");
+    const regulator = rows.find((row) => row.role === "regulator" || row.role === "policymaker");
+    const macro = rows.find((row) => row.role === "macro_research");
+    const media = rows.find((row) => row.role === "media");
+    if (company && regulator && conflictOverlap(company, regulator) >= 5) {
+      const companyConstructive = company.stance.opportunity >= company.stance.risk;
+      const regulatorRisk = regulator.stance.enforcement + regulator.stance.risk > 0;
+      if (companyConstructive || regulatorRisk) {
+        conflicts.push({
+          theme,
+          conflict_type: "company_vs_public_authority",
+          source_groups: [company.doc.source_type, regulator.doc.source_type],
+          signal: "Company-facing language and public-authority language frame the same theme through different incentives.",
+          company_side: company.sentence.slice(0, 260),
+          public_authority_side: regulator.sentence.slice(0, 260),
+          evidence_index: [company.evidence_index, regulator.evidence_index],
+          confidence: regulatorRisk ? "medium" : "low",
+          what_to_check_next: "Compare full filing language, regulator release context, and any executive transcript on the same theme.",
+        });
+      }
+    }
+    if (macro && (company || media)) {
+      const other = company || media;
+      const macroRisk =
+        conflictOverlap(macro, other) >= 5 &&
+        macro.stance.risk + macro.stance.discipline > other.stance.risk + other.stance.discipline;
+      if (macroRisk) {
+        conflicts.push({
+          theme,
+          conflict_type: "macro_risk_vs_market_story",
+          source_groups: [macro.doc.source_type, other.doc.source_type],
+          signal: "Macro or research language is more cautious than the market-facing source language.",
+          cautious_side: macro.sentence.slice(0, 260),
+          comparison_side: other.sentence.slice(0, 260),
+          evidence_index: [macro.evidence_index, other.evidence_index],
+          confidence: "low",
+          what_to_check_next: "Look for newer speeches, research posts, filings, and news that repeat the same caution terms.",
+        });
+      }
+    }
+  }
+  return conflicts.slice(0, 5);
+}
+
 function renderBrief(docs, evidence) {
   if (!docs.length) {
     $("briefOutput").innerHTML = "<p>Load or import text to generate a research brief.</p>";
@@ -481,6 +636,7 @@ function renderBrief(docs, evidence) {
 
 function createLocalAnalystJson(docs, evidence) {
   const summary = summarizeCorpus(docs);
+  const sourceConflicts = detectSourceConflicts(evidence);
   const sourceCounts = new Map();
   const themeCounts = new Map();
   const riskTerms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff", "investigation", "shortage"];
@@ -543,6 +699,7 @@ function createLocalAnalystJson(docs, evidence) {
         what_to_check_next: "Compare whether official filings use risk language while public commentary uses opportunity or policy framing.",
       },
     ],
+    source_conflicts: sourceConflicts,
     contradictions: [],
     narrative_shifts: [
       {
@@ -589,7 +746,7 @@ function createLocalAnalystJson(docs, evidence) {
     ],
     confidence: {
       level: evidence.length >= 8 && topSources.length >= 3 ? "medium" : "low",
-      reason: `Based on ${evidence.length} retrieved passages, ${topSources.length} source groups, and transparent local NLP rules.`,
+      reason: `Based on ${evidence.length} retrieved passages, ${topSources.length} source groups, ${sourceConflicts.length} source conflict signals, and transparent local NLP rules.`,
     },
     evidence_citations: evidence.slice(0, 8).map((item, index) => ({
       evidence_index: index + 1,
@@ -635,6 +792,7 @@ function renderAnalystOutput(analysis) {
       .join("")}</ul>`;
   };
   const contradictionCount = Array.isArray(analysis.contradictions) ? analysis.contradictions.length : 0;
+  const conflictCount = Array.isArray(analysis.source_conflicts) ? analysis.source_conflicts.length : 0;
   const riskCount = Array.isArray(analysis.risk_flags) ? analysis.risk_flags.length : 0;
   const watchCount = Array.isArray(analysis.watch_items) ? analysis.watch_items.length : 0;
 
@@ -646,6 +804,7 @@ function renderAnalystOutput(analysis) {
     <div class="memo-strip">
       <div><span>Confidence</span><strong>${escapeHtml(analysis.confidence?.level || "unknown")}</strong></div>
       <div><span>Risks</span><strong>${riskCount}</strong></div>
+      <div><span>Source conflicts</span><strong>${conflictCount}</strong></div>
       <div><span>Contradictions</span><strong>${contradictionCount}</strong></div>
       <div><span>Watch items</span><strong>${watchCount}</strong></div>
     </div>
@@ -660,7 +819,7 @@ function renderAnalystOutput(analysis) {
     <section class="analyst-section">
       <h3>Where sources may disagree</h3>
       ${renderMemoItems(
-        contradictionCount ? analysis.contradictions : analysis.source_tensions,
+        conflictCount ? analysis.source_conflicts : (contradictionCount ? analysis.contradictions : analysis.source_tensions),
         "No direct contradiction found; compare source incentives before drawing a stronger conclusion.",
         3,
       )}
@@ -786,6 +945,18 @@ function renderWatchlist(docs) {
     .join("");
 }
 
+function providerOverride() {
+  const engine = $("overrideEngine")?.value || "auto";
+  const apiKey = $("overrideApiKey")?.value.trim() || "";
+  if (engine === "auto" || !apiKey) return null;
+  return {
+    engine,
+    api_key: apiKey,
+    base_url: $("overrideBaseUrl")?.value.trim() || "",
+    model: $("overrideModel")?.value.trim() || "",
+  };
+}
+
 function render() {
   const docs = filteredCorpus();
   const summary = summarizeCorpus(docs);
@@ -833,6 +1004,7 @@ async function runSelectedEngine() {
   await refreshLiveCorpusForQuestion(question);
   const docs = filteredCorpus();
   const evidence = retrieveEvidence(docs, question);
+  const sourceConflicts = detectSourceConflicts(evidence);
   if (analysisMode === "brief") {
     renderBrief(docs, evidence);
     renderEvidence(evidence);
@@ -853,9 +1025,12 @@ async function runSelectedEngine() {
       body: JSON.stringify({
         engine: ANALYSIS_ENGINE,
         analysis_mode: analysisMode,
+        analysis_contract: ANALYSIS_CONTRACT,
+        provider_override: providerOverride(),
         question,
         themes: THEMES,
-        evidence: evidence.slice(0, 8).map(({ doc, theme, sentence }) => ({
+        source_conflicts: sourceConflicts,
+        evidence: evidence.slice(0, 12).map(({ doc, theme, sentence }) => ({
           source_type: doc.source_type,
           date: doc.date,
           title: doc.title,
@@ -868,6 +1043,9 @@ async function runSelectedEngine() {
     if (!response.ok) throw new Error(`Relay returned ${response.status}`);
     const payload = await response.json();
     if (payload.analysis) {
+      if (!Array.isArray(payload.analysis.source_conflicts)) {
+        payload.analysis.source_conflicts = sourceConflicts;
+      }
       renderAnalystOutput(payload.analysis);
     } else {
       $("briefOutput").innerHTML = `<p>${escapeHtml(payload.summary || payload.text || "")}</p>`;
@@ -877,7 +1055,7 @@ async function runSelectedEngine() {
     renderEvidence(evidence);
     showStatus("Analysis complete.");
   } catch (error) {
-    renderBrief(docs, evidence);
+    renderAnalystOutput(createLocalAnalystJson(docs, evidence));
     renderEvidence(evidence);
     $("briefOutput").insertAdjacentHTML(
       "afterbegin",

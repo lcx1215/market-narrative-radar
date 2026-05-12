@@ -22,6 +22,7 @@ ANALYST_SCHEMA = {
     "executive_read": "",
     "explicit_claims": [],
     "implicit_signals": [],
+    "source_conflicts": [],
     "source_tensions": [],
     "contradictions": [],
     "narrative_shifts": [],
@@ -42,15 +43,18 @@ Use only the retrieved evidence. Do not provide trading advice, price targets,
 return forecasts, portfolio instructions, or unsupported claims.
 
 Analyze what the sources explicitly say, what they may imply, whether source
-groups frame the issue differently, whether there are contradictions or
-tensions, what wording is hedged, and what evidence is missing.
+groups frame the issue differently, whether there are source conflicts,
+contradictions or tensions, what wording is hedged, and what evidence is
+missing.
 
 Return valid JSON only. Use this exact schema:
 {json.dumps(ANALYST_SCHEMA, indent=2)}
 
 Each important claim should include an evidence_index when it is grounded in a
 retrieved passage. If the evidence is too thin, say so in missing_evidence and
-lower confidence."""
+lower confidence. Treat source_conflicts as differences in institutional
+framing across company, regulator, policymaker, macro research, and media
+sources; do not invent conflict if the evidence only supports weak tension."""
 
 
 def post_json(url: str, payload: dict, headers: dict | None = None) -> dict:
@@ -61,7 +65,8 @@ def post_json(url: str, payload: dict, headers: dict | None = None) -> dict:
         headers={"Content-Type": "application/json", **(headers or {})},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=90) as response:
+    timeout = float(os.environ.get("MNR_PROVIDER_TIMEOUT", "10"))
+    with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -75,6 +80,17 @@ def evidence_text(payload: dict) -> str:
     return "\n\n".join(lines)
 
 
+def source_conflict_text(payload: dict) -> str:
+    rows = payload.get("source_conflicts") or []
+    if not rows:
+        return "No precomputed source conflicts."
+    return "\n".join(
+        f"- {item.get('theme', '')}: {item.get('conflict_type', '')} | "
+        f"{', '.join(item.get('source_groups', []))} | {item.get('signal', '')}"
+        for item in rows[:5]
+    )
+
+
 def parse_json_object(text: str) -> dict:
     """Parse strict JSON, with a fallback for model replies wrapped in fences."""
     try:
@@ -86,8 +102,19 @@ def parse_json_object(text: str) -> dict:
         return json.loads(match.group(0))
 
 
+def analysis_user_content(payload: dict) -> str:
+    contract = payload.get("analysis_contract") or {}
+    return (
+        f"Question: {payload.get('question', '')}\n\n"
+        f"Fixed analysis contract:\n{json.dumps(contract, indent=2)}\n\n"
+        f"Precomputed source conflict signals:\n{source_conflict_text(payload)}\n\n"
+        f"Evidence:\n{evidence_text(payload)}"
+    )
+
+
 def local_analyst(payload: dict) -> dict:
     evidence = payload.get("evidence", [])
+    source_conflicts = payload.get("source_conflicts") or []
     themes = {}
     source_types = {}
     risk_terms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff"]
@@ -133,6 +160,7 @@ def local_analyst(payload: dict) -> dict:
                 "source_groups": top_sources,
             }
         ],
+        "source_conflicts": source_conflicts,
         "contradictions": [],
         "narrative_shifts": [],
         "risk_flags": risk_rows[:5],
@@ -165,7 +193,7 @@ def local_analyst(payload: dict) -> dict:
         ],
         "confidence": {
             "level": "medium" if len(evidence) >= 6 and len(source_types) >= 2 else "low",
-            "reason": f"Based on {len(evidence)} passages across {len(source_types)} source types.",
+            "reason": f"Based on {len(evidence)} passages across {len(source_types)} source types and {len(source_conflicts)} precomputed source conflict signals.",
         },
         "evidence_citations": [
             {
@@ -206,10 +234,7 @@ def openai_compatible(payload: dict) -> str:
             "model": model,
             "messages": [
                 {"role": "system", "content": ANALYST_PROMPT if payload.get("analysis_mode") == "analyst" else SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"Question: {payload.get('question', '')}\n\nEvidence:\n{evidence_text(payload)}",
-                },
+                {"role": "user", "content": analysis_user_content(payload)},
             ],
             "temperature": 0.2,
         },
@@ -228,16 +253,68 @@ def minimax_compatible(payload: dict) -> str:
             "model": model,
             "messages": [
                 {"role": "system", "content": ANALYST_PROMPT if payload.get("analysis_mode") == "analyst" else SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"Question: {payload.get('question', '')}\n\nEvidence:\n{evidence_text(payload)}",
-                },
+                {"role": "user", "content": analysis_user_content(payload)},
             ],
             "temperature": 0.2,
         },
         {"Authorization": f"Bearer {api_key}"},
     )
     return result["choices"][0]["message"]["content"]
+
+
+def openai_style_with_key(payload: dict, override: dict) -> str:
+    api_key = override["api_key"]
+    base_url = override.get("base_url") or (
+        "https://api.minimax.io/v1"
+        if override.get("engine") == "minimax-compatible"
+        else "https://api.openai.com/v1"
+    )
+    model = override.get("model") or (
+        os.environ.get("MINIMAX_MODEL", "MiniMax-M2.7")
+        if override.get("engine") == "minimax-compatible"
+        else os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
+    )
+    result = post_json(
+        f"{base_url.rstrip('/')}/chat/completions",
+        {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": ANALYST_PROMPT if payload.get("analysis_mode") == "analyst" else SYSTEM_PROMPT},
+                {"role": "user", "content": analysis_user_content(payload)},
+            ],
+            "temperature": 0.2,
+        },
+        {"Authorization": f"Bearer {api_key}"},
+    )
+    return result["choices"][0]["message"]["content"]
+
+
+def anthropic_with_key(payload: dict, override: dict) -> str:
+    model = override.get("model") or os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5")
+    result = post_json(
+        "https://api.anthropic.com/v1/messages",
+        {
+            "model": model,
+            "max_tokens": 1200,
+            "system": ANALYST_PROMPT if payload.get("analysis_mode") == "analyst" else SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": analysis_user_content(payload)}],
+        },
+        {"x-api-key": override["api_key"], "anthropic-version": "2023-06-01"},
+    )
+    return "".join(part.get("text", "") for part in result.get("content", []))
+
+
+def provider_override(payload: dict) -> tuple[str | None, str | None]:
+    override = payload.get("provider_override") or {}
+    engine = override.get("engine")
+    api_key = override.get("api_key")
+    if not engine or engine == "auto" or not api_key:
+        return None, None
+    if engine in {"minimax-compatible", "openai-compatible"}:
+        return engine, openai_style_with_key(payload, override)
+    if engine == "anthropic-compatible":
+        return engine, anthropic_with_key(payload, override)
+    return None, None
 
 
 def anthropic_compatible(payload: dict) -> str:
@@ -252,7 +329,7 @@ def anthropic_compatible(payload: dict) -> str:
             "messages": [
                 {
                     "role": "user",
-                    "content": f"Question: {payload.get('question', '')}\n\nEvidence:\n{evidence_text(payload)}",
+                    "content": analysis_user_content(payload),
                 }
             ],
         },
@@ -268,7 +345,7 @@ def ollama(payload: dict) -> str:
         f"{host.rstrip('/')}/api/generate",
         {
             "model": model,
-            "prompt": f"{ANALYST_PROMPT if payload.get('analysis_mode') == 'analyst' else SYSTEM_PROMPT}\n\nQuestion: {payload.get('question', '')}\n\nEvidence:\n{evidence_text(payload)}",
+            "prompt": f"{ANALYST_PROMPT if payload.get('analysis_mode') == 'analyst' else SYSTEM_PROMPT}\n\n{analysis_user_content(payload)}",
             "stream": False,
         },
     )
@@ -310,7 +387,13 @@ class Handler(BaseHTTPRequestHandler):
         engine = payload.get("engine", "local")
         try:
             analyst = payload.get("analysis_mode") == "analyst"
-            if engine == "auto":
+            override_provider, override_summary = provider_override(payload)
+            if override_summary:
+                result = {"analysis": parse_json_object(override_summary), "provider": override_provider} if analyst else {
+                    "summary": override_summary,
+                    "provider": override_provider,
+                }
+            elif engine == "auto":
                 provider, summary = auto_provider(payload)
                 if summary:
                     result = {"analysis": parse_json_object(summary), "provider": provider} if analyst else {
@@ -348,7 +431,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except BrokenPipeError:
+            return
 
 
 def main() -> None:

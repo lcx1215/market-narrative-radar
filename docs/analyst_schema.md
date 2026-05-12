@@ -7,6 +7,7 @@ The analyst mode is for deeper interpretation of public text evidence. It separa
   "executive_read": "",
   "explicit_claims": [],
   "implicit_signals": [],
+  "source_conflicts": [],
   "source_tensions": [],
   "contradictions": [],
   "narrative_shifts": [],
@@ -27,5 +28,7 @@ The analyst mode is for deeper interpretation of public text evidence. It separa
 ```
 
 Core idea: the app should not only summarize what people said. It should also examine what wording may imply, where source groups disagree, what has changed, and what evidence is missing.
+
+`source_conflicts` is the P1 conflict detector field. It is for cases where company, executive, regulator, policymaker, macro research, or media sources frame the same theme differently. A conflict does not have to mean a factual contradiction. It can mean an incentive-aware framing gap, such as company language emphasizing growth while regulator language emphasizes compliance or risk.
 
 Every important analytical claim should cite retrieved evidence when possible.
