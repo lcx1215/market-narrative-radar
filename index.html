@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Market Narrative Radar</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="product-label">Public Text Intelligence</p>
+        <h1>Market Narrative Radar</h1>
+        <p class="lede">
+          Ask a market or policy question. The app retrieves public text,
+          compares source language, and returns an evidence-grounded read.
+        </p>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel query-panel" aria-label="Narrative question">
+        <div>
+          <h2>Ask one market question</h2>
+          <p>Public sources, retrieval, and model routing are handled in the background.</p>
+        </div>
+        <div class="ask-box">
+          <textarea id="questionBox" rows="4">What changed in the AI, rates, and regulation narrative?</textarea>
+          <div class="ask-row">
+            <span id="analysisStatus">Ready to analyze public text.</span>
+            <button id="askButton" class="primary">Analyze</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-grid utility-dock">
+        <article class="panel stat-panel">
+          <span class="stat-label">Documents</span>
+          <strong id="docCount">0</strong>
+          <small id="sourceMix">No corpus loaded</small>
+        </article>
+        <article class="panel stat-panel">
+          <span class="stat-label">Top narrative</span>
+          <strong id="topTheme">-</strong>
+          <small id="topThemeDetail">Waiting for text</small>
+        </article>
+        <article class="panel stat-panel">
+          <span class="stat-label">Risk tone</span>
+          <strong id="riskTone">-</strong>
+          <small id="riskToneDetail">Dictionary-based score</small>
+        </article>
+        <article class="panel stat-panel">
+          <span class="stat-label">Source tension</span>
+          <strong id="sourceTension">-</strong>
+          <small id="sourceTensionDetail">Cross-source theme dispersion</small>
+        </article>
+      </section>
+
+      <section class="workspace utility-dock">
+        <article class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Narrative Theme Map</h2>
+              <p>Normalized keyword intensity by source category.</p>
+            </div>
+          </div>
+          <div id="themeBars" class="theme-bars"></div>
+        </article>
+
+        <article class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Source Comparison</h2>
+              <p>Which groups are driving the current narrative.</p>
+            </div>
+          </div>
+          <div id="sourceBars" class="source-bars"></div>
+        </article>
+      </section>
+
+      <section class="workspace three-column utility-dock">
+        <article class="panel insight-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Entity Radar</h2>
+              <p>Lightweight extraction of organizations, agencies, tickers, and policy actors.</p>
+            </div>
+          </div>
+          <div id="entityList" class="chip-list"></div>
+        </article>
+
+        <article class="panel insight-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Corpus Quality</h2>
+              <p>Diagnostics for diversity, readability, and source freshness.</p>
+            </div>
+          </div>
+          <div id="qualityMetrics" class="metric-list"></div>
+        </article>
+
+        <article class="panel insight-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Source Health</h2>
+              <p>Connector readiness for open-source deployment.</p>
+            </div>
+          </div>
+          <div id="sourceHealth" class="health-list"></div>
+        </article>
+      </section>
+
+      <section class="panel alerts-panel utility-dock">
+        <div class="panel-heading">
+          <div>
+            <h2>Watchlist Alerts</h2>
+            <p>Keyword-driven monitoring over the filtered corpus, useful for repeat research sweeps.</p>
+          </div>
+        </div>
+        <div id="watchlistAlerts" class="alert-grid"></div>
+      </section>
+
+      <section class="workspace results-workspace">
+        <article class="panel brief-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Analyst Answer</h2>
+              <p>Generated from retrieved source text; no trading recommendation is produced.</p>
+            </div>
+            <button id="copyBrief" class="secondary">Copy brief</button>
+          </div>
+          <div id="briefOutput" class="brief-output"></div>
+          <div id="analystOutput" class="analyst-output"></div>
+          <div id="citationAudit" class="citation-audit"></div>
+        </article>
+      </section>
+
+      <details class="panel evidence-panel evidence-drawer">
+        <summary>
+          <div>
+            <h2>Evidence and sources</h2>
+            <p>Open when you want to inspect the passages behind the answer.</p>
+          </div>
+          <span id="lastUpdated" class="timestamp"></span>
+        </summary>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Theme</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody id="evidenceRows"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <section class="panel methodology utility-dock">
+        <h2>Method</h2>
+        <div class="method-grid">
+          <div>
+            <h3>Text-as-data layer</h3>
+            <p>
+              The app tokenizes documents, computes dictionary scores for market-relevant
+              themes, ranks evidence passages, and compares source groups. It works without
+              a remote model.
+            </p>
+          </div>
+          <div>
+            <h3>LLM layer</h3>
+            <p>
+              The app calls a private backend adapter when available. Provider keys stay in
+              environment variables, and the interface never asks the user for secrets.
+            </p>
+          </div>
+          <div>
+            <h3>Research boundary</h3>
+            <p>
+              Outputs are evidence summaries for research. The app does not forecast prices,
+              recommend trades, or automate portfolio decisions.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="utility-dock" aria-hidden="true">
+        <button id="loadSample" type="button">Load demo corpus</button>
+        <button id="exportJson" type="button">Export JSON</button>
+        <button id="exportCsv" type="button">Export CSV</button>
+        <button id="fetchLive" type="button">Fetch live sources</button>
+        <button id="pasteButton" type="button">Add pasted text</button>
+        <label>
+          Import data
+          <input id="csvUpload" type="file" accept=".csv,text/csv,.txt,.srt,.vtt,text/plain" />
+        </label>
+        <select id="analysisMode">
+          <option value="brief">Evidence brief</option>
+          <option value="analyst" selected>Structured analyst JSON</option>
+        </select>
+        <input id="tickerFilter" />
+        <select id="sourceFilter">
+          <option value="all">All sources</option>
+        </select>
+        <select id="themeFilter">
+          <option value="all">All themes</option>
+        </select>
+        <input id="docLimit" type="number" value="120" />
+        <input id="watchlistBox" value="AI, China, tariff, rates, regulation, supply chain" />
+        <input id="liveQueryBox" value="artificial intelligence semiconductor tariff regulation" />
+        <textarea id="pasteBox"></textarea>
+        <div id="engineCards"></div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Market Narrative Radar</span>
+      <span>Public text sources, transparent scoring, reproducible corpus.</span>
+    </footer>
+
+    <script src="src/app.js"></script>
+  </body>
+</html>

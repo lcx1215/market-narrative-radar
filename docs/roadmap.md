@@ -1,0 +1,28 @@
+# Roadmap
+
+Market Narrative Radar is structured so the static app can grow into a hosted research system.
+
+## Near-Term
+
+- Add a scheduled ingestion worker for SEC EDGAR, Federal Register, Federal Reserve RSS, NY Fed, FTC, DOJ Antitrust, CFTC, and GDELT.
+- Add API-key based optional connectors for Congress.gov and FRED.
+- Store source health checks with timestamps.
+- Add user-defined narrative dictionaries.
+- Add saved workspaces for watchlists and ticker baskets.
+
+## NLP Upgrades
+
+- TF-IDF similarity search.
+- Topic modeling over selected source groups.
+- Embedding index for passage retrieval.
+- Named entity recognition through a replaceable local or hosted model.
+- Transcript diarization metadata for interviews and videos.
+- Small GPT-2 style model training notebook for educational comparison with modern LLM APIs.
+
+## Product Upgrades
+
+- Backend relay authentication.
+- Citation export to Markdown.
+- Evidence diff between two dates or source groups.
+- GitHub Pages demo plus optional hosted backend.
+- Test suite for ingestion workers and browser functions.
