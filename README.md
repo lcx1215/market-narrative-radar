@@ -43,7 +43,8 @@ The app keeps the main screen simple:
 - narrative shifts versus the starting corpus,
 - source-group comparison across company, regulator, policy, research, and news text,
 - evidence passages behind the answer,
-- source links where available.
+- source links where available,
+- exportable Markdown briefs for sharing or archiving.
 
 The visible themes are:
 
@@ -131,7 +132,7 @@ The next product work should improve the app itself before cloud deployment:
 3. show data coverage and source health clearly,
 4. harden narrative-shift tracking versus a prior corpus,
 5. harden source-group comparison,
-6. add watchlists and exportable briefs.
+6. harden watchlists and exportable briefs.
 
 ## Project Map
 

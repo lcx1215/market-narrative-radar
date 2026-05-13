@@ -4,6 +4,7 @@ __pycache__/
 node_modules/
 dist/
 .mnr-runtime/
+.playwright-cli/
 .env
 .env.*
 !.env.example

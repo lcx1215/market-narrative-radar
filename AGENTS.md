@@ -32,7 +32,7 @@ Priority order:
 2. Improve source coverage, freshness, and source-health visibility.
 3. Harden narrative-shift tracking against a prior corpus or baseline.
 4. Harden source-group comparison views.
-5. Add watchlists and exportable briefs.
+5. Harden watchlists and exportable briefs.
 6. Only then expand into hosted accounts, payments, or cloud deployment.
 
 ## UI Rules
@@ -42,6 +42,7 @@ Priority order:
 - Do not expose internal labels such as provider routing, JSON schema, prompts, or debugging terms in the visible app.
 - Do not add busy dashboards to the first viewport.
 - Evidence, method, and diagnostics can exist, but they should not compete with the brief.
+- Exported briefs should read like research notes, with evidence and source links included.
 
 ## Data and Evidence Rules
 

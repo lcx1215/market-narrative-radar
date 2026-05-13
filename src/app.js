@@ -1906,6 +1906,83 @@ function downloadText(filename, text, type = "text/plain") {
   URL.revokeObjectURL(url);
 }
 
+function markdownSafe(value) {
+  return displayText(value).replace(/\|/g, "\\|");
+}
+
+function blockText(id) {
+  return String($(id)?.innerText || "")
+    .split(/\n+/)
+    .map((line) => markdownSafe(line))
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildBriefMarkdown() {
+  const generatedAt = new Date().toISOString();
+  const docs = filteredCorpus();
+  const evidence = activeEvidence.length ? activeEvidence : retrieveEvidence(docs, $("questionBox").value);
+  const watchTerms = watchlistTerms();
+  const evidenceRows = evidence
+    .slice(0, 12)
+    .map((item, index) => {
+      const doc = item.doc || {};
+      const url = doc.source_url && String(doc.source_url).startsWith("http") ? doc.source_url : "";
+      return [
+        `${index + 1}. **${markdownSafe(item.theme || "Evidence")}**`,
+        `   - Source: ${markdownSafe(doc.source_type || "Unknown")} | ${markdownSafe(doc.title || "Untitled")} | ${markdownSafe(doc.date || "No date")}`,
+        `   - Passage: ${markdownSafe(item.sentence || "")}`,
+        url ? `   - Link: ${url}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n");
+
+  return `# Market Narrative Radar Brief
+
+Generated: ${generatedAt}
+
+Question: ${markdownSafe($("questionBox").value)}
+
+Research boundary: This is a read of public language, not financial advice.
+
+## Coverage
+
+${blockText("coverageSummary") || "No coverage summary available."}
+
+## Narrative Shift
+
+${blockText("narrativeShift") || "No narrative shift available."}
+
+## Source Groups
+
+${blockText("sourceComparison") || "No source comparison available."}
+
+## Brief
+
+${blockText("briefOutput") || "No brief available."}
+
+## Analyst Notes
+
+${blockText("analystOutput") || "No analyst notes available."}
+
+## Watchlist
+
+${watchTerms.length ? watchTerms.map((term) => `- ${markdownSafe(term)}`).join("\n") : "- No watchlist terms set."}
+
+## Evidence
+
+${evidenceRows || "No evidence passages available."}
+`;
+}
+
+function exportBriefMarkdown() {
+  const date = new Date().toISOString().slice(0, 10);
+  downloadText(`market-narrative-brief-${date}.md`, buildBriefMarkdown(), "text/markdown");
+  showStatus("Brief exported.");
+}
+
 function toCsvValue(value) {
   return `"${String(value || "").replace(/"/g, '""')}"`;
 }
@@ -1994,6 +2071,7 @@ $("pasteButton").addEventListener("click", addPastedText);
 $("copyBrief").addEventListener("click", async () => {
   await navigator.clipboard.writeText($("briefOutput").innerText);
 });
+$("exportBrief").addEventListener("click", exportBriefMarkdown);
 $("exportJson").addEventListener("click", exportJson);
 $("exportCsv").addEventListener("click", exportCsv);
 $("tickerFilter").addEventListener("input", render);
