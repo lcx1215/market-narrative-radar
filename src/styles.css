@@ -214,53 +214,6 @@ main {
   margin: 10px 0 0;
 }
 
-.method-strip {
-  align-items: center;
-  background: rgba(15, 23, 34, 0.72);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  display: flex;
-  gap: 18px;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding: 18px;
-}
-
-.method-strip span {
-  color: var(--accent-2);
-  display: block;
-  font-size: 12px;
-  font-weight: 850;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-}
-
-.method-strip strong {
-  display: block;
-  font-size: 18px;
-  line-height: 1.25;
-}
-
-.method-strip ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.method-strip li {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  padding: 7px 10px;
-}
-
 .query-panel p {
   color: var(--muted);
   line-height: 1.5;
@@ -1126,15 +1079,6 @@ footer {
   .hero-visual {
     max-width: 100%;
     width: 100%;
-  }
-
-  .method-strip {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .method-strip ul {
-    justify-content: flex-start;
   }
 
   .engine-cards {
