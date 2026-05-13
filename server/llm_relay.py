@@ -389,7 +389,8 @@ def openai_compatible(payload: dict) -> str:
 def minimax_compatible(payload: dict) -> str:
     api_key = os.environ["MINIMAX_API_KEY"]
     base_url = os.environ.get("MINIMAX_BASE_URL", "https://api.minimax.io/v1")
-    model = os.environ.get("MINIMAX_MODEL", "MiniMax-M2.7")
+    model = os.environ.get("MINIMAX_MODEL", "MiniMax-M2.1")
+    max_tokens = int(os.environ.get("MINIMAX_MAX_TOKENS", "1400"))
     result = post_json(
         f"{base_url.rstrip('/')}/chat/completions",
         {
@@ -399,6 +400,8 @@ def minimax_compatible(payload: dict) -> str:
                 {"role": "user", "content": analysis_user_content(payload)},
             ],
             "temperature": 0.2,
+            "max_tokens": max_tokens,
+            "response_format": {"type": "json_object"},
         },
         {"Authorization": f"Bearer {api_key}"},
     )

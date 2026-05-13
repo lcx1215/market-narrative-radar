@@ -1213,7 +1213,7 @@ async function runSelectedEngine() {
   $("analystOutput").innerHTML = "";
 
   const analysisController = new AbortController();
-  const analysisTimeout = window.setTimeout(() => analysisController.abort(), 18000);
+  const analysisTimeout = window.setTimeout(() => analysisController.abort(), 45000);
   try {
     const response = await fetch(LLM_RELAY_ENDPOINT, {
       method: "POST",
