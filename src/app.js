@@ -178,6 +178,8 @@ const ANALYSIS_CONTRACT = {
     "render_memo_with_evidence",
   ],
   required_fields: [
+    "question_intent",
+    "analysis_plan",
     "executive_read",
     "explicit_claims",
     "implicit_signals",
@@ -194,6 +196,7 @@ const ANALYSIS_CONTRACT = {
     "Use retrieved evidence only.",
     "Tie implications to source text.",
     "Separate direct claims from interpretation.",
+    "Classify the user question before interpreting evidence.",
     "Lower confidence when evidence is thin or source coverage is narrow.",
     "Do not provide trading recommendations, price targets, or portfolio instructions.",
   ],
@@ -615,6 +618,149 @@ function detectSourceConflicts(evidence) {
   return conflicts.slice(0, 5);
 }
 
+function classifyQuestionIntent(question = "") {
+  const lower = question.toLowerCase();
+  if (/\b(contradict|contradiction|conflict|disagree|tension|mismatch)\b/.test(lower)) {
+    return "source_conflict_check";
+  }
+  if (/\b(sec|ftc|doj|cftc|regulat\w*|antitrust|congress|senate|house|policy|law|rule|rules)\b/.test(lower)) {
+    return "policy_and_regulatory_read";
+  }
+  if (/\b(rate|rates|inflation|fed|treasury|yield|yields|liquidity|credit|macro)\b/.test(lower)) {
+    return "macro_narrative_read";
+  }
+  if (/\b(company|filing|earnings|management|executive|ceo|cfo|margin|revenue|demand)\b/.test(lower)) {
+    return "company_language_read";
+  }
+  if (/\b(ai|chip|semiconductor|gpu|data center|tariff|china|supply chain)\b/.test(lower)) {
+    return "sector_theme_read";
+  }
+  return "broad_market_narrative_scan";
+}
+
+function keyQuestionTerms(question = "") {
+  const stop = new Set([
+    "what",
+    "the",
+    "and",
+    "for",
+    "are",
+    "was",
+    "which",
+    "where",
+    "when",
+    "does",
+    "from",
+    "into",
+    "about",
+    "changed",
+    "change",
+    "market",
+    "narrative",
+    "analysis",
+    "analyze",
+    "public",
+    "source",
+    "sources",
+  ]);
+  return [...new Set(tokenize(question).filter((token) => !stop.has(token)))].slice(0, 8);
+}
+
+function buildAnalysisPlan(question, evidence, sourceConflicts) {
+  const sourceTypes = [...new Set(evidence.map((item) => item.doc.source_type).filter(Boolean))];
+  const themes = [...new Set(evidence.map((item) => item.theme).filter(Boolean))];
+  const focusTerms = keyQuestionTerms(question);
+  const evidenceCount = evidence.length;
+  const sourceCount = sourceTypes.length;
+  const conflictCount = sourceConflicts.length;
+  const steps = [
+    "Classify the question into a narrow text-analysis intent.",
+    "Retrieve passages from public sources and keep evidence indexes stable.",
+    "Compare company, regulator, policymaker, macro research, and media framing.",
+    "Separate direct claims from implied narrative signals.",
+    "Return missing evidence and confidence limits before any conclusion.",
+  ];
+  const answerLimits = [
+    "No trading recommendation, price target, return forecast, or portfolio instruction.",
+    "No claim should be stronger than the retrieved evidence.",
+  ];
+  if (evidenceCount < 6) answerLimits.push("Evidence set is thin; confidence should stay low.");
+  if (sourceCount < 3) answerLimits.push("Source coverage is narrow; compare more source groups before making a stronger read.");
+  if (!conflictCount) answerLimits.push("No strong precomputed source conflict was found; treat disagreement language cautiously.");
+  return {
+    intent: classifyQuestionIntent(question),
+    focus_terms: focusTerms,
+    evidence_count: evidenceCount,
+    source_count: sourceCount,
+    source_groups: sourceTypes,
+    themes: themes.slice(0, 5),
+    source_conflict_count: conflictCount,
+    steps,
+    answer_limits: answerLimits,
+  };
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) return value;
+  if (value === undefined || value === null || value === "") return [];
+  return [value];
+}
+
+function normalizeAnalystJson(analysis, plan, evidence, sourceConflicts) {
+  const normalized = analysis && typeof analysis === "object" ? { ...analysis } : {};
+  const arrayFields = [
+    "explicit_claims",
+    "implicit_signals",
+    "source_conflicts",
+    "source_tensions",
+    "contradictions",
+    "narrative_shifts",
+    "risk_flags",
+    "opportunity_signals",
+    "speaker_incentives",
+    "hedging_language",
+    "missing_evidence",
+    "watch_items",
+    "source_reliability",
+    "market_relevance",
+    "evidence_citations",
+  ];
+  normalized.question_intent = normalized.question_intent || plan.intent;
+  normalized.analysis_plan = normalized.analysis_plan && typeof normalized.analysis_plan === "object"
+    ? { ...plan, ...normalized.analysis_plan }
+    : plan;
+  arrayFields.forEach((field) => {
+    normalized[field] = normalizeList(normalized[field]);
+  });
+  if (!normalized.source_conflicts.length) normalized.source_conflicts = sourceConflicts;
+  if (!normalized.executive_read) {
+    normalized.executive_read = "The answer is limited to retrieved public text evidence and should be treated as a narrative read, not a forecast.";
+  }
+  if (!normalized.confidence || typeof normalized.confidence !== "object") {
+    normalized.confidence = { level: "low", reason: "The model did not return a confidence object, so the app lowered confidence." };
+  }
+  if (!normalized.confidence.level) normalized.confidence.level = "low";
+  if (!normalized.confidence.reason) {
+    normalized.confidence.reason = `Based on ${evidence.length} retrieved passages across ${plan.source_count} source groups.`;
+  }
+  if (plan.evidence_count < 6 && !normalized.missing_evidence.some((item) => String(item).includes("thin"))) {
+    normalized.missing_evidence.push("Evidence set is thin; treat the result as a first-pass read.");
+  }
+  if (plan.source_count < 3 && !normalized.missing_evidence.some((item) => String(item).includes("Source coverage"))) {
+    normalized.missing_evidence.push("Source coverage is narrow; add more source groups before relying on a stronger conclusion.");
+  }
+  if (!normalized.evidence_citations.length) {
+    normalized.evidence_citations = evidence.slice(0, 8).map((item, index) => ({
+      evidence_index: index + 1,
+      source_type: item.doc.source_type,
+      title: item.doc.title,
+      date: item.doc.date,
+      url: item.doc.source_url,
+    }));
+  }
+  return normalized;
+}
+
 function renderBrief(docs, evidence) {
   if (!docs.length) {
     $("briefOutput").innerHTML = "<p>Load or import text to generate a research brief.</p>";
@@ -656,6 +802,7 @@ function renderBrief(docs, evidence) {
 function createLocalAnalystJson(docs, evidence) {
   const summary = summarizeCorpus(docs);
   const sourceConflicts = detectSourceConflicts(evidence);
+  const plan = buildAnalysisPlan($("questionBox").value, evidence, sourceConflicts);
   const sourceCounts = new Map();
   const themeCounts = new Map();
   const riskTerms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff", "investigation", "shortage"];
@@ -691,6 +838,8 @@ function createLocalAnalystJson(docs, evidence) {
   });
 
   return {
+    question_intent: plan.intent,
+    analysis_plan: plan,
     executive_read: `The retrieved corpus is led by ${topThemes.map(([theme]) => theme).join(", ") || "no clear theme"} across ${topSources.map(([source]) => source).join(", ") || "limited sources"}. Treat this as text evidence about narrative pressure, not as investment advice.`,
     explicit_claims: evidence.slice(0, 6).map((item, index) => ({
       claim: item.sentence.slice(0, 300),
@@ -814,12 +963,29 @@ function renderAnalystOutput(analysis) {
   const conflictCount = Array.isArray(analysis.source_conflicts) ? analysis.source_conflicts.length : 0;
   const riskCount = Array.isArray(analysis.risk_flags) ? analysis.risk_flags.length : 0;
   const watchCount = Array.isArray(analysis.watch_items) ? analysis.watch_items.length : 0;
+  const plan = analysis.analysis_plan || {};
+  const planSteps = Array.isArray(plan.steps) ? plan.steps.slice(0, 5) : [];
+  const answerLimits = Array.isArray(plan.answer_limits) ? plan.answer_limits.slice(0, 4) : [];
 
   $("briefOutput").innerHTML = `
     <p><strong>Analyst read:</strong> ${escapeHtml(analysis.executive_read || "Structured analysis returned.")}</p>
     <p><strong>Boundary:</strong> This is an evidence-based text read, not a forecast, price target, or trading recommendation.</p>
   `;
   $("analystOutput").innerHTML = `
+    <section class="analysis-route">
+      <div>
+        <span>Question intent</span>
+        <strong>${escapeHtml(analysis.question_intent || plan.intent || "broad_market_narrative_scan")}</strong>
+      </div>
+      <div>
+        <span>Evidence route</span>
+        <strong>${escapeHtml(`${plan.evidence_count || 0} passages / ${plan.source_count || 0} source groups`)}</strong>
+      </div>
+      <div>
+        <span>Focus terms</span>
+        <strong>${escapeHtml((plan.focus_terms || []).join(", ") || "question-led retrieval")}</strong>
+      </div>
+    </section>
     <div class="memo-strip">
       <div><span>Confidence</span><strong>${escapeHtml(analysis.confidence?.level || "unknown")}</strong></div>
       <div><span>Risks</span><strong>${riskCount}</strong></div>
@@ -850,6 +1016,17 @@ function renderAnalystOutput(analysis) {
     <section class="analyst-section">
       <h3>What to watch next</h3>
       ${renderMemoItems(analysis.watch_items, "No follow-up item generated.", 4)}
+    </section>
+    <section class="analyst-section">
+      <h3>Analysis route and guardrails</h3>
+      ${renderMemoItems(
+        [
+          ...planSteps.map((step) => ({ step })),
+          ...answerLimits.map((limit) => ({ limit })),
+        ],
+        "No route metadata returned.",
+        8,
+      )}
     </section>
     <details class="raw-analysis">
       <summary>Structured JSON fields</summary>
@@ -1024,6 +1201,7 @@ async function runSelectedEngine() {
   const docs = filteredCorpus();
   const evidence = retrieveEvidence(docs, question);
   const sourceConflicts = detectSourceConflicts(evidence);
+  const analysisPlan = buildAnalysisPlan(question, evidence, sourceConflicts);
   if (analysisMode === "brief") {
     renderBrief(docs, evidence);
     renderEvidence(evidence);
@@ -1045,6 +1223,7 @@ async function runSelectedEngine() {
         engine: ANALYSIS_ENGINE,
         analysis_mode: analysisMode,
         analysis_contract: ANALYSIS_CONTRACT,
+        analysis_plan: analysisPlan,
         provider_override: providerOverride(),
         question,
         themes: THEMES,
@@ -1062,10 +1241,7 @@ async function runSelectedEngine() {
     if (!response.ok) throw new Error(`Relay returned ${response.status}`);
     const payload = await response.json();
     if (payload.analysis) {
-      if (!Array.isArray(payload.analysis.source_conflicts)) {
-        payload.analysis.source_conflicts = sourceConflicts;
-      }
-      renderAnalystOutput(payload.analysis);
+      renderAnalystOutput(normalizeAnalystJson(payload.analysis, analysisPlan, evidence, sourceConflicts));
     } else {
       $("briefOutput").innerHTML = `<p>${escapeHtml(payload.summary || payload.text || "")}</p>`;
       $("analystOutput").innerHTML = "";
@@ -1074,7 +1250,7 @@ async function runSelectedEngine() {
     renderEvidence(evidence);
     showStatus("Analysis complete.");
   } catch (error) {
-    renderAnalystOutput(createLocalAnalystJson(docs, evidence));
+    renderAnalystOutput(normalizeAnalystJson(createLocalAnalystJson(docs, evidence), analysisPlan, evidence, sourceConflicts));
     renderEvidence(evidence);
     $("briefOutput").insertAdjacentHTML(
       "afterbegin",

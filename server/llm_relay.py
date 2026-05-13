@@ -19,6 +19,8 @@ Use only the provided evidence. Do not make trade recommendations, forecasts,
 price targets, or portfolio instructions. Mention uncertainty and source gaps."""
 
 ANALYST_SCHEMA = {
+    "question_intent": "",
+    "analysis_plan": {},
     "executive_read": "",
     "explicit_claims": [],
     "implicit_signals": [],
@@ -42,7 +44,7 @@ ANALYST_PROMPT = f"""You are a public financial and policy text analyst.
 Use only the retrieved evidence. Do not provide trading advice, price targets,
 return forecasts, portfolio instructions, or unsupported claims.
 
-Analyze what the sources explicitly say, what they may imply, whether source
+First classify the question into a narrow text-analysis intent. Then analyze what the sources explicitly say, what they may imply, whether source
 groups frame the issue differently, whether there are source conflicts,
 contradictions or tensions, what wording is hedged, and what evidence is
 missing.
@@ -91,6 +93,127 @@ def source_conflict_text(payload: dict) -> str:
     )
 
 
+def classify_question_intent(question: str) -> str:
+    lower = question.lower()
+    if re.search(r"\b(contradict|contradiction|conflict|disagree|tension|mismatch)\b", lower):
+        return "source_conflict_check"
+    if re.search(r"\b(sec|ftc|doj|cftc|regulat\w*|antitrust|congress|senate|house|policy|law|rule|rules)\b", lower):
+        return "policy_and_regulatory_read"
+    if re.search(r"\b(rate|rates|inflation|fed|treasury|yield|yields|liquidity|credit|macro)\b", lower):
+        return "macro_narrative_read"
+    if re.search(r"\b(company|filing|earnings|management|executive|ceo|cfo|margin|revenue|demand)\b", lower):
+        return "company_language_read"
+    if re.search(r"\b(ai|chip|semiconductor|gpu|data center|tariff|china|supply chain)\b", lower):
+        return "sector_theme_read"
+    return "broad_market_narrative_scan"
+
+
+def analysis_plan(payload: dict) -> dict:
+    provided = payload.get("analysis_plan")
+    if isinstance(provided, dict) and provided:
+        return provided
+    evidence = payload.get("evidence", [])
+    source_conflicts = payload.get("source_conflicts") or []
+    source_groups = sorted({item.get("source_type", "") for item in evidence if item.get("source_type")})
+    themes = sorted({item.get("theme", "") for item in evidence if item.get("theme")})
+    focus_terms = [
+        token
+        for token in re.findall(r"[a-z0-9$-]{3,}", payload.get("question", "").lower())
+        if token not in {"what", "the", "and", "for", "are", "was", "which", "where", "when", "does", "from", "into", "about", "changed", "change", "market", "narrative", "analysis", "analyze", "public", "source", "sources"}
+    ][:8]
+    limits = [
+        "No trading recommendation, price target, return forecast, or portfolio instruction.",
+        "No claim should be stronger than the retrieved evidence.",
+    ]
+    if len(evidence) < 6:
+        limits.append("Evidence set is thin; confidence should stay low.")
+    if len(source_groups) < 3:
+        limits.append("Source coverage is narrow; compare more source groups before making a stronger read.")
+    if not source_conflicts:
+        limits.append("No strong precomputed source conflict was found; treat disagreement language cautiously.")
+    return {
+        "intent": classify_question_intent(payload.get("question", "")),
+        "focus_terms": sorted(set(focus_terms), key=focus_terms.index),
+        "evidence_count": len(evidence),
+        "source_count": len(source_groups),
+        "source_groups": source_groups,
+        "themes": themes[:5],
+        "source_conflict_count": len(source_conflicts),
+        "steps": [
+            "Classify the question into a narrow text-analysis intent.",
+            "Retrieve passages from public sources and keep evidence indexes stable.",
+            "Compare company, regulator, policymaker, macro research, and media framing.",
+            "Separate direct claims from implied narrative signals.",
+            "Return missing evidence and confidence limits before any conclusion.",
+        ],
+        "answer_limits": limits,
+    }
+
+
+def normalize_analysis(raw: dict, payload: dict) -> dict:
+    plan = analysis_plan(payload)
+    evidence = payload.get("evidence", [])
+    source_conflicts = payload.get("source_conflicts") or []
+    analysis = dict(raw or {})
+    list_fields = [
+        "explicit_claims",
+        "implicit_signals",
+        "source_conflicts",
+        "source_tensions",
+        "contradictions",
+        "narrative_shifts",
+        "risk_flags",
+        "opportunity_signals",
+        "speaker_incentives",
+        "hedging_language",
+        "missing_evidence",
+        "watch_items",
+        "source_reliability",
+        "market_relevance",
+        "evidence_citations",
+    ]
+    analysis["question_intent"] = analysis.get("question_intent") or plan["intent"]
+    if isinstance(analysis.get("analysis_plan"), dict):
+        analysis["analysis_plan"] = {**plan, **analysis["analysis_plan"]}
+    else:
+        analysis["analysis_plan"] = plan
+    for field in list_fields:
+        value = analysis.get(field, [])
+        if value is None or value == "":
+            analysis[field] = []
+        elif isinstance(value, list):
+            analysis[field] = value
+        else:
+            analysis[field] = [value]
+    if not analysis["source_conflicts"]:
+        analysis["source_conflicts"] = source_conflicts
+    if not analysis.get("executive_read"):
+        analysis["executive_read"] = "The answer is limited to retrieved public text evidence and should be treated as a narrative read, not a forecast."
+    if not isinstance(analysis.get("confidence"), dict):
+        analysis["confidence"] = {"level": "low", "reason": "The model did not return a confidence object, so the relay lowered confidence."}
+    analysis["confidence"].setdefault("level", "low")
+    analysis["confidence"].setdefault(
+        "reason",
+        f"Based on {len(evidence)} retrieved passages across {plan['source_count']} source groups.",
+    )
+    if len(evidence) < 6 and not any("thin" in str(item).lower() for item in analysis["missing_evidence"]):
+        analysis["missing_evidence"].append("Evidence set is thin; treat the result as a first-pass read.")
+    if plan["source_count"] < 3 and not any("source coverage" in str(item).lower() for item in analysis["missing_evidence"]):
+        analysis["missing_evidence"].append("Source coverage is narrow; add more source groups before relying on a stronger conclusion.")
+    if not analysis["evidence_citations"]:
+        analysis["evidence_citations"] = [
+            {
+                "evidence_index": index,
+                "source_type": item.get("source_type", ""),
+                "title": item.get("title", ""),
+                "date": item.get("date", ""),
+                "url": item.get("source_url", ""),
+            }
+            for index, item in enumerate(evidence[:8], start=1)
+        ]
+    return analysis
+
+
 def parse_json_object(text: str) -> dict:
     """Parse strict JSON, with a fallback for model replies wrapped in fences."""
     try:
@@ -107,6 +230,7 @@ def analysis_user_content(payload: dict) -> str:
     return (
         f"Question: {payload.get('question', '')}\n\n"
         f"Fixed analysis contract:\n{json.dumps(contract, indent=2)}\n\n"
+        f"Analysis route selected by app:\n{json.dumps(analysis_plan(payload), indent=2)}\n\n"
         f"Precomputed source conflict signals:\n{source_conflict_text(payload)}\n\n"
         f"Evidence:\n{evidence_text(payload)}"
     )
@@ -115,6 +239,7 @@ def analysis_user_content(payload: dict) -> str:
 def local_analyst(payload: dict) -> dict:
     evidence = payload.get("evidence", [])
     source_conflicts = payload.get("source_conflicts") or []
+    plan = analysis_plan(payload)
     themes = {}
     source_types = {}
     risk_terms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff"]
@@ -143,6 +268,8 @@ def local_analyst(payload: dict) -> dict:
         if any(term in lower for term in risk_terms):
             risk_rows.append({"risk": sentence[:220], "evidence_index": index})
     return {
+        "question_intent": plan["intent"],
+        "analysis_plan": plan,
         "executive_read": (
             f"The retrieved evidence is concentrated in {', '.join(top_themes) or 'no dominant theme'} "
             f"across {', '.join(top_sources) or 'no source group'}. This is an evidence-grounded text read, not a trading recommendation."
@@ -389,36 +516,36 @@ class Handler(BaseHTTPRequestHandler):
             analyst = payload.get("analysis_mode") == "analyst"
             override_provider, override_summary = provider_override(payload)
             if override_summary:
-                result = {"analysis": parse_json_object(override_summary), "provider": override_provider} if analyst else {
+                result = {"analysis": normalize_analysis(parse_json_object(override_summary), payload), "provider": override_provider} if analyst else {
                     "summary": override_summary,
                     "provider": override_provider,
                 }
             elif engine == "auto":
                 provider, summary = auto_provider(payload)
                 if summary:
-                    result = {"analysis": parse_json_object(summary), "provider": provider} if analyst else {
+                    result = {"analysis": normalize_analysis(parse_json_object(summary), payload), "provider": provider} if analyst else {
                         "summary": summary,
                         "provider": provider,
                     }
                 else:
-                    result = {"analysis": local_analyst(payload), "provider": "local"} if analyst else {
+                    result = {"analysis": normalize_analysis(local_analyst(payload), payload), "provider": "local"} if analyst else {
                         "summary": local_summary(payload),
                         "provider": "local",
                     }
             elif engine == "local" and analyst:
-                result = {"analysis": local_analyst(payload)}
+                result = {"analysis": normalize_analysis(local_analyst(payload), payload)}
             elif engine == "openai-compatible":
                 summary = openai_compatible(payload)
-                result = {"analysis": parse_json_object(summary)} if analyst else {"summary": summary}
+                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
             elif engine == "minimax-compatible":
                 summary = minimax_compatible(payload)
-                result = {"analysis": parse_json_object(summary)} if analyst else {"summary": summary}
+                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
             elif engine == "anthropic-compatible":
                 summary = anthropic_compatible(payload)
-                result = {"analysis": parse_json_object(summary)} if analyst else {"summary": summary}
+                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
             elif engine == "ollama":
                 summary = ollama(payload)
-                result = {"analysis": parse_json_object(summary)} if analyst else {"summary": summary}
+                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
             else:
                 summary = local_summary(payload)
                 result = {"summary": summary}

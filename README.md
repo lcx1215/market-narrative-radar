@@ -15,8 +15,11 @@ It is not a trading system. It does not forecast returns, produce price targets,
 - Extracts lightweight entities and tickers from the filtered corpus.
 - Reports token volume, lexical diversity, readability, source diversity, and freshness.
 - Retrieves evidence passages for a user question.
+- Classifies open-ended questions into a bounded text-analysis intent before calling the model.
+- Builds an analysis route with focus terms, source coverage, evidence count, and answer limits.
 - Supports structured analyst mode for explicit claims, implicit signals, contradictions, narrative shifts, source tensions, risk flags, hedging language, missing evidence, and watch items.
 - Detects source conflicts where companies, executives, regulators, policymakers, macro research, and media frame the same theme differently.
+- Normalizes LLM output back into the fixed analyst JSON schema if a provider omits fields.
 - Audits each brief by counting cited passages, documents, source types, and references.
 - Keeps advanced import, export, filter, and source diagnostics in the code path without making the main interface busy.
 - Keeps LLM providers behind a replaceable backend relay.
@@ -82,11 +85,13 @@ There is also a closed-by-default model sandbox for open-source users who want t
 The app is not a free-form chatbot. It teaches whichever model is connected to follow the same process:
 
 1. Parse the question.
-2. Refresh public sources.
-3. Retrieve evidence.
-4. Detect source conflicts.
-5. Fill the fixed analyst JSON schema.
-6. Render a concise memo and keep evidence auditable.
+2. Classify the question into a bounded text-analysis intent.
+3. Build an analysis route with evidence and source guardrails.
+4. Refresh public sources.
+5. Retrieve evidence.
+6. Detect source conflicts.
+7. Fill and validate the fixed analyst JSON schema.
+8. Render a concise memo and keep evidence auditable.
 
 See `docs/analysis_contract.md` for the full contract.
 

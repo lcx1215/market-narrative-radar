@@ -7,6 +7,7 @@ Market Narrative Radar is not a free-form chatbot. The user can ask an open-ende
 ```text
 user question
   -> classify question intent
+  -> build fixed analysis route
   -> refresh public sources
   -> retrieve evidence passages
   -> score source conflicts
@@ -18,6 +19,8 @@ user question
 ## Required Behavior
 
 - Use retrieved evidence only.
+- Classify the user question before interpreting evidence.
+- Keep the answer inside the selected analysis route.
 - Tie every implication to source text.
 - Separate direct claims from interpretation.
 - Compare source incentives across company, regulator, policymaker, macro research, and media text.
@@ -38,6 +41,19 @@ The app precomputes source conflict candidates before the LLM call. It compares 
 The detector looks for same-theme evidence where one source group emphasizes growth, demand, or opportunity while another emphasizes risk, regulation, enforcement, costs, or uncertainty. To avoid noisy matches, a candidate must share a named anchor, share at least two non-generic terms, and show opposed framing.
 
 The LLM receives these conflict candidates as structured context. It can accept, weaken, or reject them, but it should treat them as framing gaps, not proven factual contradictions.
+
+## Open-Ended Questions
+
+The app accepts open-ended user questions, but it does not let the model answer freely. The app first assigns one intent:
+
+- `source_conflict_check`
+- `policy_and_regulatory_read`
+- `macro_narrative_read`
+- `company_language_read`
+- `sector_theme_read`
+- `broad_market_narrative_scan`
+
+It then builds an `analysis_plan` with focus terms, evidence count, source count, source groups, themes, steps, and answer limits. The frontend and backend both normalize the final JSON so missing model fields do not break the research memo.
 
 ## Model Sandbox
 

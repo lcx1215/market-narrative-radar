@@ -58,6 +58,8 @@ The P1 build adds a source conflict detector. Before the LLM layer runs, the app
 
 The connected model is therefore not asked to think from scratch. It receives a fixed analysis contract, retrieved evidence, precomputed conflict candidates, and strict output fields. This makes the model replaceable: MiniMax, OpenAI-compatible APIs, Anthropic, Ollama, or local fallback can all fill the same structured contract.
 
+The P2/P3 build keeps the scope narrow and strengthens that contract. Open-ended questions are first classified into a bounded intent such as policy/regulatory read, macro narrative read, company language read, sector theme read, or source conflict check. The app then builds an analysis plan with focus terms, evidence count, source groups, themes, route steps, and answer limits. Both the browser and backend relay normalize model output back into the fixed JSON schema. If a model omits fields, returns weak confidence metadata, or fails to include citations, the app fills the missing structure conservatively and lowers the practical strength of the answer.
+
 ## Findings From the Current Build
 
 The demo corpus initially emphasizes congressional and policy language, which pushes macro and regulation themes to the top. After live fetching, the source mix expands to include company filings, regulators, central banks, and research blogs. This changes the evidence table: the top retrieved passages include policy text, Federal Register text about data center growth, SEC filing language, and Federal Reserve speech text. The app therefore demonstrates one of its main analytical goals: source composition changes the observed narrative.
