@@ -49,6 +49,7 @@ Priority order:
 - Keep source dates, source types, and source URLs attached to evidence.
 - Show coverage, freshness, evidence count, and source health near the brief.
 - Show narrative shifts as theme movement against a stated baseline.
+- Watchlist alerts should show matching evidence, source group, and date; do not present zero-hit terms as evidence.
 - Do not hide source failures. Show lower confidence or a limited-source state.
 - Treat news as weaker evidence than official filings, agencies, central banks, or primary research posts.
 

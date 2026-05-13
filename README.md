@@ -42,6 +42,7 @@ The app keeps the main screen simple:
 - coverage, freshness, and source-health status,
 - narrative shifts versus the starting corpus,
 - source-group comparison across company, regulator, policy, research, and news text,
+- watchlist alerts with matching source evidence,
 - evidence passages behind the answer,
 - source links where available,
 - exportable Markdown briefs for sharing or archiving.

@@ -495,13 +495,35 @@ function watchlistTerms() {
     .filter(Boolean);
 }
 
+function watchlistSnippet(doc, term) {
+  const hit =
+    sentences(doc.text || "").find((sentence) => countPhrase(sentence, term) && sentence.length >= 40) ||
+    representativeSentence(doc.text || "") ||
+    doc.title ||
+    "";
+  return displayText(hit);
+}
+
 function summarizeWatchlist(docs) {
   return watchlistTerms()
     .map((term) => {
-      const matches = docs.filter((doc) => countPhrase(`${doc.title || ""} ${doc.text || ""}`, term));
+      const matches = docs
+        .filter((doc) => countPhrase(`${doc.title || ""} ${doc.text || ""}`, term))
+        .sort((a, b) => parsedDocTime(b) - parsedDocTime(a));
       const risk = matches.reduce((sum, doc) => sum + scoreWords(doc, RISK_WORDS), 0);
       const sources = [...new Set(matches.map((doc) => doc.source_type))].slice(0, 3);
-      return { term, count: matches.length, risk, sources };
+      const latest = matches[0] || null;
+      return {
+        term,
+        count: matches.length,
+        risk,
+        sources,
+        latestDate: latest?.date || "",
+        latestSource: latest?.source_type || "",
+        latestTitle: latest?.title || "",
+        latestUrl: latest?.source_url || "",
+        snippet: latest ? watchlistSnippet(latest, term) : "",
+      };
     })
     .sort((a, b) => b.count - a.count || b.risk - a.risk);
 }
@@ -1607,18 +1629,36 @@ function renderEngines() {
 
 function renderWatchlist(docs) {
   const alerts = summarizeWatchlist(docs);
-  $("watchlistAlerts").innerHTML = alerts
-    .map((alert) => {
+  const renderCards = (items) =>
+    items
+      .map((alert) => {
       const level = alert.count >= 8 || alert.risk >= 10 ? "high" : alert.count >= 3 ? "medium" : "low";
+      const excerpt = alert.snippet
+        ? `${alert.snippet.slice(0, 150)}${alert.snippet.length > 150 ? "..." : ""}`
+        : "No matching passage in the current filter.";
+      const matchLabel = alert.count === 1 ? "matching document" : "matching documents";
       return `<div class="alert-card ${level}">
         <span>${escapeHtml(level)}</span>
         <strong>${escapeHtml(alert.term)}</strong>
-        <small>${alert.count} matching documents ${
+        <small>${alert.count} ${matchLabel} ${
           alert.sources.length ? `across ${escapeHtml(alert.sources.join(", "))}` : "in current filter"
         }</small>
+        <em>${escapeHtml(alert.latestDate || "No date")} · ${escapeHtml(alert.latestSource || "No source")}</em>
+        <p>${escapeHtml(excerpt)}</p>
       </div>`;
     })
     .join("");
+  $("watchlistAlerts").innerHTML = renderCards(alerts);
+  if ($("watchlistSummary")) {
+    $("watchlistSummary").innerHTML = `
+      <div class="watchlist-head">
+        <span>Watchlist</span>
+        <strong>Terms with current evidence</strong>
+        <small>${alerts.length} monitored terms</small>
+      </div>
+      ${renderCards(alerts.slice(0, 4))}
+    `;
+  }
 }
 
 function providerOverride() {
@@ -1692,6 +1732,7 @@ async function runSelectedEngine() {
     renderCoverageSummary(docs, evidence);
     renderNarrativeShift(docs);
     renderSourceComparison(docs, evidence);
+    renderWatchlist(docs);
     askButton.disabled = false;
     askButton.textContent = "Pay $1 & generate";
     return;
@@ -1740,6 +1781,7 @@ async function runSelectedEngine() {
     renderCoverageSummary(docs, evidence);
     renderNarrativeShift(docs);
     renderSourceComparison(docs, evidence);
+    renderWatchlist(docs);
     showStatus("Analysis complete.");
   } catch (error) {
     renderAnalystOutput(normalizeAnalystJson(createLocalAnalystJson(docs, evidence), analysisPlan, evidence, sourceConflicts));
@@ -1747,6 +1789,7 @@ async function runSelectedEngine() {
     renderCoverageSummary(docs, evidence);
     renderNarrativeShift(docs);
     renderSourceComparison(docs, evidence);
+    renderWatchlist(docs);
     $("briefOutput").insertAdjacentHTML(
       "afterbegin",
       `<p class="engine-warning"><strong>Connection was slow:</strong> ${escapeHtml(
@@ -1922,7 +1965,7 @@ function buildBriefMarkdown() {
   const generatedAt = new Date().toISOString();
   const docs = filteredCorpus();
   const evidence = activeEvidence.length ? activeEvidence : retrieveEvidence(docs, $("questionBox").value);
-  const watchTerms = watchlistTerms();
+  const watchAlerts = summarizeWatchlist(docs).filter((alert) => alert.count > 0).slice(0, 8);
   const evidenceRows = evidence
     .slice(0, 12)
     .map((item, index) => {
@@ -1969,7 +2012,11 @@ ${blockText("analystOutput") || "No analyst notes available."}
 
 ## Watchlist
 
-${watchTerms.length ? watchTerms.map((term) => `- ${markdownSafe(term)}`).join("\n") : "- No watchlist terms set."}
+${watchAlerts.length ? watchAlerts.map((alert) => {
+    const url = alert.latestUrl && String(alert.latestUrl).startsWith("http") ? `\n  - Link: ${alert.latestUrl}` : "";
+    const matchLabel = alert.count === 1 ? "match" : "matches";
+    return `- **${markdownSafe(alert.term)}**: ${alert.count} ${matchLabel}; latest ${markdownSafe(alert.latestDate || "no date")} from ${markdownSafe(alert.latestSource || "unknown source")}.\n  - Evidence: ${markdownSafe(alert.snippet || "No matching passage in the current filter.")}${url}`;
+  }).join("\n") : "- No watchlist terms set."}
 
 ## Evidence
 
