@@ -17,7 +17,7 @@ Market Narrative Radar is structured so the static app can grow into a hosted re
 - Embedding index for passage retrieval.
 - Named entity recognition through a replaceable local or hosted model.
 - Transcript diarization metadata for interviews and videos.
-- Small GPT-2 style model training notebook for educational comparison with modern LLM APIs.
+- Small baseline language-model notebook for educational comparison.
 
 ## Product Upgrades
 

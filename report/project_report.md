@@ -14,7 +14,7 @@ This project treats those documents as text data. The goal is to build a tool th
 
 ## Data
 
-The app ships with a reproducible demo corpus of 111 public documents. This corpus is used as a fallback and demonstration dataset so the app can run immediately without credentials or network access. It contains congressional speeches, SEC filing excerpts, Federal Reserve speeches, New York Fed posts, and schema examples for imported news or transcript text.
+The app ships with a reproducible demo corpus of 111 public documents. This corpus is used as a fallback and demonstration dataset so the app can run immediately without credentials or network access. It contains congressional speeches, SEC filing excerpts, Federal Reserve speeches, New York Fed posts, and normalized examples of imported news or transcript text.
 
 The live data relay extends the corpus with continuously updated public sources:
 
@@ -58,13 +58,13 @@ The app also includes a defensive answer pattern for open-ended or unusual user 
 
 The P1 build adds a source conflict detector. Before the LLM layer runs, the app compares evidence by source role: company or executive text, regulator text, policymaker text, macro research text, and media text. A conflict signal is created when the same theme is framed differently across these roles, for example when a company-facing source emphasizes growth or opportunity while a public authority source emphasizes risk, enforcement, compliance, or uncertainty. The detector does not claim that one side is correct. It marks the framing gap as something the analyst memo should discuss and verify.
 
-The connected model is therefore not asked to think from scratch. It receives a fixed analysis contract, retrieved evidence, precomputed conflict candidates, and strict output fields. This makes the model replaceable: MiniMax, OpenAI-compatible APIs, Anthropic, Ollama, or local fallback can all fill the same structured contract.
+The analysis layer is therefore not allowed to start from a blank page. It receives a fixed contract, retrieved evidence, precomputed conflict candidates, and strict output fields. This keeps the output comparable across local fallback and private provider runs.
 
-The same contract now includes source profiles. The model can participate in source-aware interpretation, but source classification, evidence retrieval, conflict candidates, citations, confidence defaults, and JSON validation are controlled by the app rather than left to an open-ended chat response.
+The same contract now includes source profiles. Source classification, evidence retrieval, conflict candidates, citations, confidence defaults, and JSON validation are controlled by the app before any generated wording is shown.
 
 The P2/P3 build keeps the scope narrow and strengthens that contract. Open-ended questions are first classified into a bounded intent such as policy/regulatory read, macro narrative read, company language read, sector theme read, or source conflict check. The app then builds an analysis plan with focus terms, evidence count, source groups, themes, route steps, and answer limits. Both the browser and backend relay normalize model output back into the fixed JSON schema. If a model omits fields, returns weak confidence metadata, or fails to include citations, the app fills the missing structure conservatively and lowers the practical strength of the answer.
 
-The final product framing is a daily brief rather than an open-ended chat interface. A future hosted version could put a lightweight checkout in front of each generated daily brief, while preserving the same public-source retrieval and fixed JSON analysis contract. Open-ended custom questions are better treated as a later personal research feature.
+The final product framing is a daily brief. A future hosted version could put a lightweight checkout in front of each generated daily brief while preserving the same public-source retrieval and fixed JSON analysis contract.
 
 ## Findings From the Current Build
 

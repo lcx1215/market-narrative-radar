@@ -15,21 +15,21 @@ python3 server/llm_relay.py
 Then open:
 
 ```text
-http://localhost:8765
+http://127.0.0.1:8765
 ```
 
-The app works with the checked-in demo corpus even if the relays are not running. With the relays running, `Generate brief` refreshes public sources and routes analysis through the backend model adapter.
+The app works with the checked-in demo corpus even if the relays are not running. With the relays running, `Pay $1 & generate` refreshes public sources and routes analysis through the backend model adapter.
 
 ## What to Test
 
 Expected behavior:
 
-- The interface centers on one `Generate brief` action.
+- The interface centers on one `Pay $1 & generate` action.
 - No API key is requested in the browser.
 - The answer is an analyst memo, not a trade recommendation.
 - The memo separates direct claims, possible implications, source conflicts, source tension, risk flags, missing evidence, and watch items.
 - `Evidence and sources` expands to show the passages used for the answer.
-- `Model sandbox` is optional and closed by default; the main demo does not require a browser API key.
+- Advanced import/export/filter controls are kept out of the main interface; the demo does not require a browser API key.
 
 ## Why This Fits Text as Data
 

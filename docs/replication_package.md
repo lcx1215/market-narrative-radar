@@ -41,10 +41,10 @@ python3 -m http.server 8765
 Open:
 
 ```text
-http://localhost:8765
+http://127.0.0.1:8765
 ```
 
-The demo corpus loads automatically. For live analysis, run `python3 server/data_relay.py`; the app refreshes public sources in the background when the user clicks `Analyze`.
+The demo corpus loads automatically. For live analysis, run `python3 server/data_relay.py`; the app refreshes public sources in the background when the user clicks `Pay $1 & generate`.
 
 ## 4. Reproduce the Analysis
 

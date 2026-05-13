@@ -19,7 +19,7 @@ make open
 Open:
 
 ```text
-http://localhost:8765
+http://127.0.0.1:8765
 ```
 
 The demo corpus loads automatically. The command also starts the live data relay and the LLM relay.

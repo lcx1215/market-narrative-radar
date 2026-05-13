@@ -878,6 +878,24 @@ function normalizeList(value) {
   return [value];
 }
 
+function evidenceFallbackRead(evidence, plan) {
+  const themes = [...new Set(evidence.map((item) => item.theme).filter(Boolean))].slice(0, 3);
+  const sources = [...new Set(evidence.map((item) => item.doc.source_type).filter(Boolean))].slice(0, 3);
+  const themeText = themes.length ? themes.join(", ") : "the retrieved themes";
+  const sourceText = sources.length ? sources.join(", ") : "the current public sources";
+  return `The current evidence is led by ${themeText} across ${sourceText}. Treat this as a read of public market language, not a forecast.`;
+}
+
+function evidenceClaims(evidence) {
+  return evidence.slice(0, 6).map((item, index) => ({
+    claim: item.sentence.slice(0, 300),
+    source_type: item.doc.source_type,
+    title: item.doc.title,
+    date: item.doc.date,
+    evidence_index: index + 1,
+  }));
+}
+
 function normalizeAnalystJson(analysis, plan, evidence, sourceConflicts) {
   const normalized = analysis && typeof analysis === "object" ? { ...analysis } : {};
   const arrayFields = [
@@ -906,10 +924,40 @@ function normalizeAnalystJson(analysis, plan, evidence, sourceConflicts) {
   arrayFields.forEach((field) => {
     normalized[field] = normalizeList(normalized[field]);
   });
+  const hasModelClaims = normalized.explicit_claims.length > 0;
   if (!normalized.source_conflicts.length) normalized.source_conflicts = sourceConflicts;
   if (!normalized.source_profiles.length) normalized.source_profiles = sourceProfilesForEvidence(evidence);
-  if (!normalized.executive_read) {
-    normalized.executive_read = "This brief is based on today's public sources. Treat it as a read of market language, not a forecast.";
+  if (
+    evidence.length &&
+    (!normalized.executive_read ||
+      !hasModelClaims ||
+      /^This brief is based on today's public sources/i.test(String(normalized.executive_read)))
+  ) {
+    normalized.executive_read = evidenceFallbackRead(evidence, plan);
+  }
+  if (!normalized.explicit_claims.length && evidence.length) {
+    normalized.explicit_claims = evidenceClaims(evidence);
+  }
+  if (!normalized.implicit_signals.length && evidence.length) {
+    normalized.implicit_signals = [
+      {
+        signal: "Narrative concentration is visible in the retrieved source language.",
+        support: `Top themes: ${(plan.themes || []).slice(0, 3).join(", ") || "current evidence set"}.`,
+        evidence_index: 1,
+      },
+      {
+        signal: "Source breadth affects confidence more than any single passage.",
+        support: `Evidence spans ${plan.source_count || 0} source group(s): ${(plan.source_groups || []).join(", ") || "current corpus"}.`,
+        evidence_index: evidence.length > 1 ? 2 : 1,
+      },
+    ];
+  }
+  if (!normalized.watch_items.length) {
+    normalized.watch_items = [
+      "New public filings or agency releases that repeat the same terms",
+      "Whether the same theme appears across more than one source group",
+      "Any shift from confident language to hedged or risk-heavy wording",
+    ];
   }
   if (!normalized.confidence || typeof normalized.confidence !== "object") {
     normalized.confidence = { level: "low", reason: "The model did not return a confidence object, so the app lowered confidence." };
@@ -1123,14 +1171,16 @@ function renderAnalystOutput(analysis) {
   };
   const humanLabel = (key) => userLabels[key] || key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   const compactText = (value) => {
-    if (Array.isArray(value)) return value.join(", ");
+    if (Array.isArray(value)) return value.map(displayText).join(", ");
     if (value && typeof value === "object") {
       return Object.entries(value)
         .filter(([key]) => !["evidence_index", "source_profile"].includes(key))
-        .map(([key, itemValue]) => `${humanLabel(key)}: ${Array.isArray(itemValue) ? itemValue.join(", ") : itemValue}`)
+        .map(([key, itemValue]) => `${humanLabel(key)}: ${
+          Array.isArray(itemValue) ? itemValue.map(displayText).join(", ") : displayText(itemValue)
+        }`)
         .join(" | ");
     }
-    return value || "";
+    return displayText(value);
   };
   const renderObject = (item) => {
     const evidenceIndex = item.evidence_index ? `<span class="evidence-tag">Source ${escapeHtml(item.evidence_index)}</span>` : "";
@@ -1147,7 +1197,7 @@ function renderAnalystOutput(analysis) {
     const values = Array.isArray(items) ? items.slice(0, limit) : [];
     if (!values.length) return `<p class="empty-note">${escapeHtml(fallback)}</p>`;
     return `<ul>${values
-      .map((item) => `<li>${item && typeof item === "object" ? renderObject(item) : escapeHtml(item)}</li>`)
+      .map((item) => `<li>${item && typeof item === "object" ? renderObject(item) : escapeHtml(displayText(item))}</li>`)
       .join("")}</ul>`;
   };
   const contradictionCount = Array.isArray(analysis.contradictions) ? analysis.contradictions.length : 0;
@@ -1159,7 +1209,7 @@ function renderAnalystOutput(analysis) {
   const confidenceText = analysis.confidence?.level || "limited";
 
   $("briefOutput").innerHTML = `
-    <p><strong>Bottom line:</strong> ${escapeHtml(analysis.executive_read || "The brief is ready.")}</p>
+    <p><strong>Bottom line:</strong> ${escapeHtml(displayText(analysis.executive_read || "The brief is ready."))}</p>
     <p><strong>Important:</strong> This is a read of public language, not financial advice.</p>
   `;
   $("analystOutput").innerHTML = `
@@ -1220,6 +1270,14 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function displayText(value) {
+  return String(value || "")
+    .replace(/_+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function renderEvidence(evidence) {
@@ -1508,17 +1566,8 @@ async function refreshLiveCorpusForQuestion(question) {
 
 
 function saveState() {
-  const state = {
-    tickerFilter: $("tickerFilter").value,
-    sourceFilter: $("sourceFilter").value,
-    themeFilter: $("themeFilter").value,
-    docLimit: $("docLimit").value,
-    watchlistBox: $("watchlistBox").value,
-    analysisMode: $("analysisMode").value,
-    liveQueryBox: $("liveQueryBox").value,
-  };
   try {
-    localStorage.setItem("marketNarrativeRadarState", JSON.stringify(state));
+    localStorage.removeItem("marketNarrativeRadarState");
   } catch {
     // localStorage can be blocked in strict browser contexts.
   }
@@ -1526,23 +1575,7 @@ function saveState() {
 
 function restoreState() {
   try {
-    const state = JSON.parse(localStorage.getItem("marketNarrativeRadarState") || "{}");
-    if (typeof state.questionBox === "string") {
-      state.questionBox = state.questionBox
-        .replace(/China trade/gi, "U.S. policy and trade")
-        .replace(/China & trade/gi, "U.S. policy and trade");
-    }
-    if (typeof state.watchlistBox === "string") {
-      state.watchlistBox = state.watchlistBox
-        .replace(/\bChina,\s*/gi, "")
-        .replace(/,\s*China\b/gi, "");
-    }
-    if (typeof state.liveQueryBox === "string") {
-      state.liveQueryBox = state.liveQueryBox.replace(/\bchina\b/gi, "manufacturing");
-    }
-    for (const [key, value] of Object.entries(state)) {
-      if ($(key) && value !== undefined) $(key).value = value;
-    }
+    localStorage.removeItem("marketNarrativeRadarState");
   } catch {
     return;
   }

@@ -103,6 +103,7 @@ button:disabled {
 
 .hero-visual {
   aspect-ratio: 4 / 3;
+  background: rgba(7, 11, 18, 0.62);
   border-radius: 18px;
   box-shadow:
     0 24px 70px rgba(0, 0, 0, 0.36),
@@ -110,7 +111,7 @@ button:disabled {
   flex: 0 1 420px;
   max-width: 42%;
   min-width: 320px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .product-label {
@@ -1096,7 +1097,9 @@ footer {
   }
 
   .hero-visual {
+    flex-basis: auto;
     max-width: 100%;
+    min-width: 0;
     width: 100%;
   }
 
@@ -1128,6 +1131,10 @@ footer {
 @media (max-width: 560px) {
   .app-header {
     padding-top: 34px;
+  }
+
+  .hero-visual {
+    display: none;
   }
 
   main {

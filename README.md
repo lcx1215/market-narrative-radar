@@ -1,31 +1,12 @@
 # Market Narrative Radar
 
-Market Narrative Radar is a browser-based app for public financial and policy text analysis. It studies how companies, regulators, policymakers, research blogs, and news sources frame market-relevant narratives.
+Market Narrative Radar is a small web app for reading public market language.
 
-It is not a trading system. It does not forecast returns, produce price targets, or recommend trades. The core object is text.
+It pulls together filings, policy updates, central bank language, research notes, and news, then turns the current source set into a short evidence-backed brief. The project was built for NYU Text as Data, but the structure is practical enough to publish and extend.
 
-## What It Does
+It is not a trading system. It does not predict prices, recommend trades, or tell anyone what to buy. The point is narrower: show what public sources are saying, where the tone is shifting, and which passages support the read.
 
-- Gives the user one main action: generate a daily public-text narrative brief.
-- Ships with a reproducible demo corpus so the app works immediately.
-- Refreshes live public sources through a backend data relay during analysis.
-- Normalizes all documents into one schema.
-- Scores themes such as AI and semiconductors, rates and inflation, U.S. policy and trade, regulation and antitrust, demand and margins, and risk and uncertainty.
-- Tracks watchlist terms and flags source/risk concentration.
-- Extracts lightweight entities and tickers from the filtered corpus.
-- Reports token volume, lexical diversity, readability, source diversity, and freshness.
-- Retrieves evidence passages for the daily market/policy narrative focus.
-- Classifies the daily brief into a bounded text-analysis intent before calling the model.
-- Builds an analysis route with focus terms, source coverage, evidence count, and answer limits.
-- Applies source-specific reading rules for filings, interviews, regulator text, policy speech, research posts, news, commentary, and video transcripts.
-- Supports structured analyst mode for explicit claims, implicit signals, contradictions, narrative shifts, source tensions, risk flags, hedging language, missing evidence, and watch items.
-- Detects source conflicts where companies, executives, regulators, policymakers, macro research, and media frame the same theme differently.
-- Normalizes LLM output back into the fixed analyst JSON schema if a provider omits fields.
-- Audits each brief by counting cited passages, documents, source types, and references.
-- Keeps advanced import, export, filter, and source diagnostics in the code path without making the main interface busy.
-- Keeps LLM providers behind a replaceable backend relay.
-
-## Quick Demo
+## Try It Locally
 
 On macOS, double-click:
 
@@ -33,189 +14,125 @@ On macOS, double-click:
 Market Narrative Radar.app
 ```
 
-That opens the local app page without showing a terminal window.
+If the services are already running, `Market Narrative Radar.webloc` opens the page directly.
 
-If the services are already running, `Market Narrative Radar.webloc` opens the local page directly.
-
-`Open Market Narrative Radar.command` is kept as the cold-start backup launcher for starting the local services.
-
-Command-line startup is also available:
+Command line:
 
 ```bash
 make open
 ```
 
-Open:
+Then open:
 
 ```text
-http://localhost:8765
+http://127.0.0.1:8765
 ```
 
-Run a real smoke test:
+Click `Pay $1 & generate`.
 
-```bash
-make test
-```
+This is only a local demo flow. No card is charged.
 
-If you intentionally want to exercise the configured provider key, run:
+## What You See
 
-```bash
-make test-provider
-```
+The app keeps the main screen simple:
 
-Stop everything cleanly:
+- one daily brief action,
+- a short market-language read,
+- confidence and caveats,
+- evidence passages behind the answer,
+- source links where available.
 
-```bash
-make stop
-```
+The visible themes are:
 
-The runtime writes PID files and logs under `.mnr-runtime/`, which is ignored by Git.
+- AI and semiconductors,
+- rates and inflation,
+- regulation,
+- U.S. policy and trade,
+- demand and margins,
+- risk language.
 
-Manual startup is also possible:
+## How It Works
 
-```bash
-python3 -m http.server 8765
-python3 server/data_relay.py
-python3 server/llm_relay.py
-```
+The browser loads a reproducible corpus from `data/corpus.json`.
 
-Click `Pay $1 & generate`. The local class demo does not charge a card; it opens the paid-flow shape, refreshes public sources, retrieves evidence passages, and produces a plain-English brief.
+When the local relays are running, the app also refreshes live public sources through `server/data_relay.py`. Current connectors include SEC EDGAR, Federal Register, Federal Reserve RSS, New York Fed posts, FTC, DOJ Antitrust, CFTC, GDELT, and optional Congress.gov.
 
-## Live Public Sources
+The analysis path is intentionally constrained:
 
-The live data relay currently connects:
+1. normalize each document into one schema,
+2. score themes and risk language with transparent dictionaries,
+3. retrieve source passages,
+4. compare source groups,
+5. render a brief with citations and confidence limits.
 
-- SEC EDGAR
-- Federal Register
-- Federal Reserve RSS
-- New York Fed Liberty Street Economics
-- FTC Competition
-- DOJ Antitrust
-- CFTC
-- GDELT
-- Congress.gov, optional with `CONGRESS_API_KEY`
+`server/llm_relay.py` can call a private model provider when configured, but keys stay in `.env` or environment variables. The frontend never stores or displays secrets. If no provider is available, the app falls back to local evidence-based analysis.
 
-The demo corpus in `data/corpus.json` is only a fallback and reproducibility dataset. The main architecture is live-ready.
+## Validation
 
-## LLM and Key Handling
-
-The main workflow never asks the user for an API key. The frontend calls a local backend relay at `/api/analyze`. Provider keys live only in local environment variables such as `.env`, which is ignored by Git.
-
-The relay uses an `auto` engine:
-
-1. Try MiniMax if configured.
-2. Try OpenAI-compatible APIs if configured.
-3. Try Anthropic if configured.
-4. Try Ollama if running locally.
-5. Fall back to the local transparent analyst engine.
-
-This means the project can be opened publicly on GitHub without exposing private keys, and the model provider can be replaced later without rewriting the app.
-
-There is also a closed-by-default model sandbox for open-source users who want to test their own provider key. It is a demo path: the key is used for the current request and is not stored. A future custom-question version can put checkout in front of the same relay while keeping the analysis contract unchanged.
-
-The current product shape is a daily brief. A hosted version could charge per generated daily brief, for example a simple `$1` demo unit, but payment is intentionally not implemented in this local course build.
-
-## Analysis Contract
-
-The app is not a free-form chatbot. It teaches whichever model is connected to follow the same process:
-
-1. Set the daily narrative focus.
-2. Classify the brief into a bounded text-analysis intent.
-3. Build an analysis route with evidence and source guardrails.
-4. Refresh public sources.
-5. Retrieve evidence.
-6. Attach source-specific processing rules.
-7. Detect source conflicts.
-8. Fill and validate the fixed analyst JSON schema.
-9. Render a concise memo and keep evidence auditable.
-
-See `docs/analysis_contract.md` for the full contract.
-
-## Run Locally
-
-Run the static app:
-
-```bash
-python3 -m http.server 8765
-```
-
-Open:
-
-```text
-http://localhost:8765
-```
-
-Run the live data relay:
-
-```bash
-python3 server/data_relay.py
-```
-
-The app refreshes live public sources automatically when the user clicks `Analyze`.
-
-Run the optional LLM relay:
-
-```bash
-python3 server/llm_relay.py
-```
-
-The browser app calls the local relay automatically. If no private model key is configured,
-the relay falls back to the local transparent analyst engine.
-
-## API Keys and Secrets
-
-Secrets stay local. Copy `.env.example` to `.env` for private keys. `.env` is ignored by Git.
-
-Supported optional keys:
-
-- `CONGRESS_API_KEY`
-- `OPENAI_API_KEY`
-- `MINIMAX_API_KEY`
-- `ANTHROPIC_API_KEY`
-
-The frontend never stores provider keys.
-
-## Course Fit
-
-This is a text-as-data project. The core work is corpus construction, public-source normalization, dictionary scoring, evidence retrieval, source comparison, structured interpretation, and reproducible documentation. The financial use case is a domain application, not a trading recommender.
-
-## Validate
+Run:
 
 ```bash
 python3 scripts/validate_project.py
+python3 scripts/mnr.py test
 ```
 
-For local product QA:
+To test the configured private provider on the local machine:
 
 ```bash
-make restart
-make test
-make test-provider
+python3 scripts/mnr.py test --provider
+```
+
+To clean local artifacts:
+
+```bash
 make clean
 ```
 
-## Project Files
+Runtime files live under `.mnr-runtime/`, which is ignored by Git. Secrets live in `.env`, also ignored by Git.
+
+## Course Fit
+
+This is a text-as-data project because the core object is a corpus, not a stock chart.
+
+The app demonstrates:
+
+- corpus construction,
+- document normalization,
+- dictionary scoring,
+- source comparison,
+- sentence-level evidence retrieval,
+- simple entity and ticker extraction,
+- structured, evidence-grounded interpretation,
+- reproducible local packaging.
+
+See `docs/course_methods_map.md` for the direct course-method mapping.
+
+## Limits
+
+This project is deliberately modest.
+
+- Dictionary scoring is transparent, but it misses synonyms and context.
+- The entity extractor is lightweight and can miss or over-count names.
+- Public sources can be slow, sparse, rate-limited, or temporarily unavailable.
+- GDELT and news results are useful for breadth, but they are weaker evidence than official filings or agency releases.
+- Live source freshness depends on the public APIs responding during the demo.
+- The brief summarizes public language; it does not prove causality, market impact, or future returns.
+- The local `$1` button is a product-flow mock. Payments are not implemented.
+
+## Project Map
 
 - `index.html`: app shell.
 - `src/styles.css`: visual design.
-- `src/app.js`: browser NLP, retrieval, and UI logic.
+- `src/app.js`: browser scoring, retrieval, rendering, and interaction logic.
 - `data/corpus.json`: reproducible demo corpus.
 - `data/live_corpus.json`: sample live-source output.
 - `server/data_relay.py`: live public-source relay.
-- `server/llm_relay.py`: optional replaceable LLM relay.
-- `scripts/build_corpus.py`: corpus builder.
-- `scripts/fetch_live_sources.py`: command-line live-source fetcher.
-- `scripts/mnr.py`: clean local start/stop/status/test loop.
+- `server/llm_relay.py`: optional private analysis relay.
+- `scripts/mnr.py`: local start, stop, status, test, and clean loop.
 - `scripts/validate_project.py`: package validation.
-- `report/project_report.md`: research report.
-- `docs/teacher_review_checklist.md`: short grading/demo checklist.
-- `docs/course_methods_map.md`: mapping from course NLP methods to app features.
-- `docs/analysis_contract.md`: fixed RAG/tool/DAG reasoning contract.
-- `docs/source_processing.md`: source-aware cleaning and interpretation rules.
-- `docs/source_registry.md`: public-source registry and source health posture.
-- `docs/product_readiness.md`: local product-readiness and hosted SaaS gaps.
-- `docs/replication_package.md`: replication instructions.
+- `report/project_report.md`: written report.
+- `docs/submission_checklist.md`: what to submit and what to show.
+- `docs/replication_package.md`: reproducibility notes.
 - `docs/data_dictionary.md`: data schema.
-- `docs/engines.md`: data and LLM engine documentation.
-- `docs/analyst_schema.md`: structured analyst output schema.
-- `docs/roadmap.md`: upgrade plan.
+- `docs/source_registry.md`: public-source registry.
+- `docs/product_readiness.md`: local readiness and hosted gaps.

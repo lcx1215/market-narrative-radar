@@ -44,12 +44,12 @@ Good future modules:
 - embedding search,
 - transcript diarization metadata,
 - weak supervision for narrative labels,
-- a small GPT-2 style model trained on a narrow corpus for demonstration,
+- a small baseline language model for method comparison,
 - watchdog-style alerts over saved tickers, people, agencies, and risk terms.
 
-## 3. LLM Engines
+## 3. Analysis Relay
 
-The app never stores provider keys in the browser. The LLM layer is a relay contract:
+The app never stores provider keys in the browser. The analysis layer is a relay contract:
 
 ```http
 POST /api/analyze
@@ -89,13 +89,13 @@ Supported relay types:
 The frontend uses an `auto` backend engine. The relay checks configured providers in this order:
 MiniMax, OpenAI-compatible, Anthropic, Ollama, then local fallback.
 
-The repository includes `server/llm_relay.py` as a minimal relay implementation. It supports local fallback summaries, OpenAI-compatible chat completions, MiniMax OpenAI-compatible chat completions, Anthropic messages, and Ollama generate endpoints.
+The repository includes `server/llm_relay.py` as a minimal relay implementation. It supports local fallback summaries plus optional private provider calls.
 
-The UI also includes a closed-by-default model sandbox for open-source users who want to try their own provider key. That key is sent only with the current request and is not stored by the frontend. The fixed analysis contract still controls the output schema, source conflict handling, and research boundary.
+Provider keys are sent only from local environment variables or the current request. The fixed analysis contract still controls the output schema, source conflict handling, and research boundary.
 
-## 4. Long-Task DAG
+## 4. Request Flow
 
-The app's intended long-task structure is:
+The app's request flow is:
 
 | Stage | Purpose |
 | --- | --- |
@@ -103,8 +103,8 @@ The app's intended long-task structure is:
 | Source refresh | Pull free public sources through `server/data_relay.py`. |
 | RAG retrieval | Rank sentence-level evidence by query overlap, theme match, risk language, and source diversity. |
 | Source conflict detection | Compare company, regulator, policymaker, macro research, and media framing. |
-| LLM analysis | Ask the selected model to fill the fixed analyst JSON contract. |
+| Analysis relay | Fill the fixed analyst JSON contract. |
 | Validation | Fall back to local transparent NLP if the relay or provider fails. |
 | Memo rendering | Show a concise analyst memo first; keep raw JSON and evidence available behind disclosures. |
 
-This DAG is the part that teaches a user's LLM how to think. The model provider can change, but the reasoning shape remains fixed.
+The provider can change, but the evidence flow remains fixed.

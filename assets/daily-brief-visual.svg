@@ -19,10 +19,10 @@
   <rect x="52" y="122" width="160" height="52" rx="12" fill="#0E1A28" stroke="#7D8CFF" stroke-opacity="0.42"/>
   <rect x="52" y="190" width="160" height="52" rx="12" fill="#0E1A28" stroke="#9FF26A" stroke-opacity="0.38"/>
   <rect x="52" y="258" width="160" height="52" rx="12" fill="#0E1A28" stroke="#FFB86C" stroke-opacity="0.4"/>
-  <text x="72" y="84" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Company filings</text>
-  <text x="72" y="152" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Policy text</text>
-  <text x="72" y="220" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Research blogs</text>
-  <text x="72" y="288" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Market news</text>
+  <text x="104" y="84" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Filings</text>
+  <text x="104" y="152" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Policy</text>
+  <text x="104" y="220" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Research</text>
+  <text x="104" y="288" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">News</text>
   <path d="M226 80C270 80 274 134 314 134" stroke="#20D6FF" stroke-width="3" stroke-linecap="round"/>
   <path d="M226 148C276 148 284 176 314 176" stroke="#7D8CFF" stroke-width="3" stroke-linecap="round"/>
   <path d="M226 216C274 216 284 204 314 204" stroke="#9FF26A" stroke-width="3" stroke-linecap="round"/>

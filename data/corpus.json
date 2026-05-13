@@ -1315,9 +1315,9 @@
     "organization": "User supplied company",
     "party": "",
     "ticker": "UPLOAD",
-    "title": "Schema example for uploaded executive interview",
-    "source_url": "Replace with uploaded transcript source",
-    "text": "Paste or import executive interview text here. The app will score narratives around demand, margins, regulation, AI investment, supply chain exposure, and risk language."
+    "title": "Imported executive interview sample",
+    "source_url": "Add transcript source URL when available",
+    "text": "An imported executive interview can be added here for analysis of demand, margins, regulation, technology investment, supply chain exposure, and risk language."
   },
   {
     "id": "schema-news",
@@ -1327,8 +1327,8 @@
     "organization": "User supplied news source",
     "party": "",
     "ticker": "UPLOAD",
-    "title": "Schema example for imported market news",
-    "source_url": "Replace with article URL when rights allow",
-    "text": "Paste or import a news excerpt here. The project keeps redistribution limited and lets the user analyze text that they have permission to use."
+    "title": "Imported market news sample",
+    "source_url": "Add article URL when rights allow",
+    "text": "An imported news excerpt can be added here when redistribution rights allow. The project keeps source handling explicit and conservative."
   }
 ]
