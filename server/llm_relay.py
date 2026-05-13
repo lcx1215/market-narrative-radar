@@ -288,7 +288,7 @@ def normalize_analysis(raw: dict, payload: dict) -> dict:
             if isinstance(item.get("source_profile"), dict)
         ]
     if not analysis.get("executive_read"):
-        analysis["executive_read"] = "The answer is limited to retrieved public text evidence and should be treated as a narrative read, not a forecast."
+        analysis["executive_read"] = "This brief is based on today's public sources. Treat it as a read of market language, not a forecast."
     if not isinstance(analysis.get("confidence"), dict):
         analysis["confidence"] = {"level": "low", "reason": "The model did not return a confidence object, so the relay lowered confidence."}
     analysis["confidence"].setdefault("level", "low")
@@ -342,7 +342,7 @@ def normalized_provider_analysis(text: str, payload: dict) -> dict:
     except Exception:
         analysis = normalize_analysis(local_analyst(payload), payload)
         analysis["missing_evidence"].append(
-            "The remote model returned a response that could not be parsed as the required JSON schema, so the relay used the local structured fallback."
+            "One model response was unclear, so the app used a safer built-in brief."
         )
         analysis["confidence"]["level"] = "low"
         return analysis
@@ -396,8 +396,8 @@ def local_analyst(payload: dict) -> dict:
         "question_intent": plan["intent"],
         "analysis_plan": plan,
         "executive_read": (
-            f"The retrieved evidence is concentrated in {', '.join(top_themes) or 'no dominant theme'} "
-            f"across {', '.join(top_sources) or 'no source group'}. This is an evidence-grounded text read, not a trading recommendation."
+            f"Today's public sources mostly point to {', '.join(top_themes) or 'no single theme'} "
+            f"across {', '.join(top_sources) or 'several source groups'}. Treat this as a read of market language, not financial advice."
         ),
         "explicit_claims": explicit,
         "implicit_signals": [
@@ -427,7 +427,7 @@ def local_analyst(payload: dict) -> dict:
         ],
         "hedging_language": hedge_rows[:5],
         "missing_evidence": [
-            "The retrieved evidence is not enough to infer market direction, company fundamentals, or investment action."
+            "The current source set is not enough to infer market direction, company fundamentals, or investment action."
         ],
         "watch_items": [
             "New SEC filings or 8-K updates",

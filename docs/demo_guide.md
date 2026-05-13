@@ -48,7 +48,7 @@ Use:
 What changed in the AI, rates, and regulation narrative?
 ```
 
-Click `Generate brief`.
+Click `Pay $1 & generate`.
 
 The answer should cite retrieved passages and separate explicit claims from interpretation.
 

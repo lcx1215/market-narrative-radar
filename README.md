@@ -75,7 +75,7 @@ python3 server/data_relay.py
 python3 server/llm_relay.py
 ```
 
-Click `Generate brief`. The app refreshes public sources in the background, retrieves evidence passages, and produces an analyst memo with confidence, direct claims, implied signals, source tensions, risk flags, missing evidence, and watch items.
+Click `Pay $1 & generate`. The local class demo does not charge a card; it opens the paid-flow shape, refreshes public sources, retrieves evidence passages, and produces a plain-English brief.
 
 ## Live Public Sources
 

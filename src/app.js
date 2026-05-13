@@ -860,7 +860,7 @@ function normalizeAnalystJson(analysis, plan, evidence, sourceConflicts) {
   if (!normalized.source_conflicts.length) normalized.source_conflicts = sourceConflicts;
   if (!normalized.source_profiles.length) normalized.source_profiles = sourceProfilesForEvidence(evidence);
   if (!normalized.executive_read) {
-    normalized.executive_read = "The answer is limited to retrieved public text evidence and should be treated as a narrative read, not a forecast.";
+    normalized.executive_read = "This brief is based on today's public sources. Treat it as a read of market language, not a forecast.";
   }
   if (!normalized.confidence || typeof normalized.confidence !== "object") {
     normalized.confidence = { level: "low", reason: "The model did not return a confidence object, so the app lowered confidence." };
@@ -1059,20 +1059,34 @@ function renderAnalystOutput(analysis) {
     $("analystOutput").innerHTML = "";
     return;
   }
-  const humanLabel = (key) => key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  const userLabels = {
+    claim: "Point",
+    signal: "Read",
+    risk: "Concern",
+    phrase: "Wording",
+    tension: "Difference",
+    note: "Note",
+    source_type: "Source",
+    title: "Title",
+    source_group: "Source",
+    possible_incentive: "Why it may sound this way",
+    evidence_index: "Source note",
+  };
+  const humanLabel = (key) => userLabels[key] || key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   const compactText = (value) => {
     if (Array.isArray(value)) return value.join(", ");
     if (value && typeof value === "object") {
       return Object.entries(value)
+        .filter(([key]) => !["evidence_index", "source_profile"].includes(key))
         .map(([key, itemValue]) => `${humanLabel(key)}: ${Array.isArray(itemValue) ? itemValue.join(", ") : itemValue}`)
         .join(" | ");
     }
     return value || "";
   };
   const renderObject = (item) => {
-    const evidenceIndex = item.evidence_index ? `<span class="evidence-tag">Evidence ${escapeHtml(item.evidence_index)}</span>` : "";
+    const evidenceIndex = item.evidence_index ? `<span class="evidence-tag">Source ${escapeHtml(item.evidence_index)}</span>` : "";
     const rows = Object.entries(item)
-      .filter(([key]) => key !== "evidence_index")
+      .filter(([key]) => !["evidence_index", "source_profile"].includes(key))
       .map(([key, value]) => `<div class="analyst-kv">
         <span>${escapeHtml(humanLabel(key))}</span>
         <strong>${escapeHtml(compactText(value))}</strong>
@@ -1092,74 +1106,45 @@ function renderAnalystOutput(analysis) {
   const riskCount = Array.isArray(analysis.risk_flags) ? analysis.risk_flags.length : 0;
   const watchCount = Array.isArray(analysis.watch_items) ? analysis.watch_items.length : 0;
   const plan = analysis.analysis_plan || {};
-  const planSteps = Array.isArray(plan.steps) ? plan.steps.slice(0, 5) : [];
-  const answerLimits = Array.isArray(plan.answer_limits) ? plan.answer_limits.slice(0, 4) : [];
+  const sourceCount = plan.source_count || 0;
+  const confidenceText = analysis.confidence?.level || "limited";
 
   $("briefOutput").innerHTML = `
-    <p><strong>Analyst read:</strong> ${escapeHtml(analysis.executive_read || "Structured analysis returned.")}</p>
-    <p><strong>Boundary:</strong> This is an evidence-based text read, not a forecast, price target, or trading recommendation.</p>
+    <p><strong>Bottom line:</strong> ${escapeHtml(analysis.executive_read || "The brief is ready.")}</p>
+    <p><strong>Important:</strong> This is a read of public language, not financial advice.</p>
   `;
   $("analystOutput").innerHTML = `
-    <section class="analysis-route">
-      <div>
-        <span>Question intent</span>
-        <strong>${escapeHtml(analysis.question_intent || plan.intent || "broad_market_narrative_scan")}</strong>
-      </div>
-      <div>
-        <span>Evidence route</span>
-        <strong>${escapeHtml(`${plan.evidence_count || 0} passages / ${plan.source_count || 0} source groups`)}</strong>
-      </div>
-      <div>
-        <span>Focus terms</span>
-        <strong>${escapeHtml((plan.focus_terms || []).join(", ") || "question-led retrieval")}</strong>
-      </div>
-    </section>
     <div class="memo-strip">
-      <div><span>Confidence</span><strong>${escapeHtml(analysis.confidence?.level || "unknown")}</strong></div>
-      <div><span>Risks</span><strong>${riskCount}</strong></div>
-      <div><span>Source conflicts</span><strong>${conflictCount}</strong></div>
-      <div><span>Contradictions</span><strong>${contradictionCount}</strong></div>
-      <div><span>Watch items</span><strong>${watchCount}</strong></div>
+      <div><span>Confidence</span><strong>${escapeHtml(confidenceText)}</strong></div>
+      <div><span>Sources checked</span><strong>${escapeHtml(sourceCount || "several")}</strong></div>
+      <div><span>Concerns</span><strong>${riskCount}</strong></div>
+      <div><span>Differences</span><strong>${conflictCount + contradictionCount}</strong></div>
+      <div><span>Watch next</span><strong>${watchCount}</strong></div>
     </div>
     <section class="analyst-section highlight">
-      <h3>What the text says directly</h3>
-      ${renderMemoItems(analysis.explicit_claims, "No direct claim found in current evidence.", 3)}
+      <h3>What changed</h3>
+      ${renderMemoItems(analysis.explicit_claims, "No clear new claim stood out in the current sources.", 3)}
     </section>
     <section class="analyst-section highlight">
-      <h3>What it may imply</h3>
-      ${renderMemoItems(analysis.implicit_signals, "No supported implication found in current evidence.", 3)}
+      <h3>What it could mean</h3>
+      ${renderMemoItems(analysis.implicit_signals, "The current sources do not support a strong takeaway yet.", 3)}
     </section>
     <section class="analyst-section">
-      <h3>Where sources may disagree</h3>
+      <h3>Where people sound different</h3>
       ${renderMemoItems(
         conflictCount ? analysis.source_conflicts : (contradictionCount ? analysis.contradictions : analysis.source_tensions),
-        "No direct contradiction found; compare source incentives before drawing a stronger conclusion.",
+        "No clear disagreement stood out today.",
         3,
       )}
     </section>
     <section class="analyst-section">
-      <h3>Risk flags and missing evidence</h3>
-      ${renderMemoItems([...(analysis.risk_flags || []).slice(0, 2), ...(analysis.missing_evidence || []).slice(0, 2)], "No major risk flag found in current evidence.", 4)}
+      <h3>Concerns and open questions</h3>
+      ${renderMemoItems([...(analysis.risk_flags || []).slice(0, 2), ...(analysis.missing_evidence || []).slice(0, 2)], "No major concern stood out in the current sources.", 4)}
     </section>
     <section class="analyst-section">
       <h3>What to watch next</h3>
-      ${renderMemoItems(analysis.watch_items, "No follow-up item generated.", 4)}
+      ${renderMemoItems(analysis.watch_items, "No specific follow-up item stood out today.", 4)}
     </section>
-    <section class="analyst-section">
-      <h3>Analysis route and guardrails</h3>
-      ${renderMemoItems(
-        [
-          ...planSteps.map((step) => ({ step })),
-          ...answerLimits.map((limit) => ({ limit })),
-        ],
-        "No route metadata returned.",
-        8,
-      )}
-    </section>
-    <details class="raw-analysis">
-      <summary>Structured JSON fields</summary>
-      <pre>${escapeHtml(JSON.stringify(analysis, null, 2))}</pre>
-    </details>
   `;
 }
 
@@ -1174,9 +1159,9 @@ async function checkRelayHealth() {
     if (!response.ok) throw new Error(`Relay health returned ${response.status}`);
     const payload = await response.json();
     const primary = payload.providers?.[0] || "local";
-    showStatus(payload.provider_ready ? `Model relay ready: ${primary}.` : "Model relay ready: local fallback.");
+    showStatus(payload.provider_ready ? "Ready for today's brief." : "Ready with built-in analysis.");
   } catch {
-    showStatus("Model relay not running; local browser analysis remains available.");
+    showStatus("Ready with built-in analysis.");
   }
 }
 
@@ -1347,10 +1332,10 @@ async function runSelectedEngine() {
     renderBrief(docs, evidence);
     renderEvidence(evidence);
     askButton.disabled = false;
-    askButton.textContent = "Analyze";
+    askButton.textContent = "Pay $1 & generate";
     return;
   }
-  $("briefOutput").innerHTML = "<p><strong>Running daily analyst engine:</strong> interpreting retrieved public evidence.</p>";
+  $("briefOutput").innerHTML = "<p><strong>Preparing your brief:</strong> reading the latest public sources.</p>";
   $("analystOutput").innerHTML = "";
 
   const analysisController = new AbortController();
@@ -1397,15 +1382,15 @@ async function runSelectedEngine() {
     renderEvidence(evidence);
     $("briefOutput").insertAdjacentHTML(
       "afterbegin",
-      `<p class="engine-warning"><strong>Relay unavailable:</strong> ${escapeHtml(
+      `<p class="engine-warning"><strong>Connection was slow:</strong> ${escapeHtml(
         error.message,
-      )}. Falling back to local NLP.</p>`,
+      )}. Showing a built-in brief.</p>`,
     );
-    showStatus("Used local NLP fallback.");
+    showStatus("Brief ready with built-in analysis.");
   } finally {
     window.clearTimeout(analysisTimeout);
     askButton.disabled = false;
-    askButton.textContent = "Generate brief";
+    askButton.textContent = "Pay $1 & generate";
   }
 }
 

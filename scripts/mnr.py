@@ -236,7 +236,7 @@ def post_json(url: str, payload: dict, timeout: int = 45) -> dict:
 def smoke_test(use_provider: bool) -> None:
     html = urllib.request.urlopen(f"http://127.0.0.1:{STATIC_PORT}", timeout=10).read().decode("utf-8")
     assert "Market Narrative Radar" in html
-    assert "Generate brief" in html
+    assert "Pay $1 & generate" in html
     print_line("app: html ok")
 
     health = request_json(f"http://127.0.0.1:{DATA_PORT}/api/health", timeout=10)
