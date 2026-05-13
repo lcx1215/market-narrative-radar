@@ -18,19 +18,13 @@ Then open:
 http://localhost:8765
 ```
 
-The app works with the checked-in demo corpus even if the relays are not running. With the relays running, `Analyze` refreshes public sources and routes analysis through the backend model adapter.
+The app works with the checked-in demo corpus even if the relays are not running. With the relays running, `Generate brief` refreshes public sources and routes analysis through the backend model adapter.
 
 ## What to Test
 
-Ask:
-
-```text
-What changed in the AI, rates, and regulation narrative?
-```
-
 Expected behavior:
 
-- The interface only asks for a question and an `Analyze` click.
+- The interface centers on one `Generate brief` action.
 - No API key is requested in the browser.
 - The answer is an analyst memo, not a trade recommendation.
 - The memo separates direct claims, possible implications, source conflicts, source tension, risk flags, missing evidence, and watch items.
@@ -49,6 +43,8 @@ The project treats public documents as a corpus. It performs:
 - source comparison,
 - structured evidence-grounded interpretation,
 - reproducible packaging and documentation.
+
+See `docs/course_methods_map.md` for a direct mapping from homework topics to app features.
 
 ## Secret Handling
 

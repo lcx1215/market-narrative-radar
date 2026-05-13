@@ -159,6 +159,7 @@ python3 scripts/validate_project.py
 - `scripts/validate_project.py`: package validation.
 - `report/project_report.md`: research report.
 - `docs/teacher_review_checklist.md`: short grading/demo checklist.
+- `docs/course_methods_map.md`: mapping from course NLP methods to app features.
 - `docs/analysis_contract.md`: fixed RAG/tool/DAG reasoning contract.
 - `docs/replication_package.md`: replication instructions.
 - `docs/data_dictionary.md`: data schema.
