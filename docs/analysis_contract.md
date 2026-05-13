@@ -35,9 +35,9 @@ The app precomputes source conflict candidates before the LLM call. It compares 
 - `macro_research`: Federal Reserve and research blog language
 - `media`: news and broad public coverage
 
-The detector looks for same-theme evidence where one source group emphasizes growth, demand, or opportunity while another emphasizes risk, regulation, enforcement, costs, or uncertainty.
+The detector looks for same-theme evidence where one source group emphasizes growth, demand, or opportunity while another emphasizes risk, regulation, enforcement, costs, or uncertainty. To avoid noisy matches, a candidate must share a named anchor, share at least two non-generic terms, and show opposed framing.
 
-The LLM receives these conflict candidates as structured context. It can accept, weaken, or reject them, but it should not invent conflicts that are not supported by evidence.
+The LLM receives these conflict candidates as structured context. It can accept, weaken, or reject them, but it should treat them as framing gaps, not proven factual contradictions.
 
 ## Model Sandbox
 

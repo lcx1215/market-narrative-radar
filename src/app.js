@@ -536,6 +536,25 @@ function conflictOverlap(left, right) {
   return rightTokens.reduce((sum, token) => sum + (leftTokens.has(token) ? 1 : 0), 0);
 }
 
+function hasNamedAnchor(left, right) {
+  const anchorPattern = /\b[A-Z][A-Za-z0-9&.-]{2,}(?:\s+[A-Z][A-Za-z0-9&.-]{2,}){0,2}\b/g;
+  const leftAnchors = new Set(`${left.doc.title || ""} ${left.sentence || ""}`.match(anchorPattern) || []);
+  const rightAnchors = `${right.doc.title || ""} ${right.sentence || ""}`.match(anchorPattern) || [];
+  return rightAnchors.some((anchor) => leftAnchors.has(anchor));
+}
+
+function hasOpposedFraming(left, right) {
+  const leftConstructive = left.stance.opportunity > left.stance.risk + left.stance.enforcement;
+  const rightRisk = right.stance.risk + right.stance.enforcement + right.stance.discipline > right.stance.opportunity;
+  const leftRisk = left.stance.risk + left.stance.enforcement + left.stance.discipline > left.stance.opportunity;
+  const rightConstructive = right.stance.opportunity > right.stance.risk + right.stance.enforcement;
+  return (leftConstructive && rightRisk) || (leftRisk && rightConstructive);
+}
+
+function isRelevantConflict(left, right) {
+  return conflictOverlap(left, right) >= 2 && hasNamedAnchor(left, right) && hasOpposedFraming(left, right);
+}
+
 function detectSourceConflicts(evidence) {
   const grouped = new Map();
   evidence.forEach((item, index) => {
@@ -556,19 +575,19 @@ function detectSourceConflicts(evidence) {
     const regulator = rows.find((row) => row.role === "regulator" || row.role === "policymaker");
     const macro = rows.find((row) => row.role === "macro_research");
     const media = rows.find((row) => row.role === "media");
-    if (company && regulator && conflictOverlap(company, regulator) >= 5) {
+    if (company && regulator && isRelevantConflict(company, regulator)) {
       const companyConstructive = company.stance.opportunity >= company.stance.risk;
       const regulatorRisk = regulator.stance.enforcement + regulator.stance.risk > 0;
       if (companyConstructive || regulatorRisk) {
         conflicts.push({
           theme,
-          conflict_type: "company_vs_public_authority",
+          conflict_type: "company_vs_public_authority_framing_gap",
           source_groups: [company.doc.source_type, regulator.doc.source_type],
-          signal: "Company-facing language and public-authority language frame the same theme through different incentives.",
+          signal: "Company-facing language and public-authority language appear to frame the same anchored topic differently.",
           company_side: company.sentence.slice(0, 260),
           public_authority_side: regulator.sentence.slice(0, 260),
           evidence_index: [company.evidence_index, regulator.evidence_index],
-          confidence: regulatorRisk ? "medium" : "low",
+          confidence: "low_to_medium",
           what_to_check_next: "Compare full filing language, regulator release context, and any executive transcript on the same theme.",
         });
       }
@@ -576,14 +595,14 @@ function detectSourceConflicts(evidence) {
     if (macro && (company || media)) {
       const other = company || media;
       const macroRisk =
-        conflictOverlap(macro, other) >= 5 &&
+        isRelevantConflict(macro, other) &&
         macro.stance.risk + macro.stance.discipline > other.stance.risk + other.stance.discipline;
       if (macroRisk) {
         conflicts.push({
           theme,
-          conflict_type: "macro_risk_vs_market_story",
+          conflict_type: "macro_risk_vs_market_story_framing_gap",
           source_groups: [macro.doc.source_type, other.doc.source_type],
-          signal: "Macro or research language is more cautious than the market-facing source language.",
+          signal: "Macro or research language appears more cautious than market-facing language on the same anchored topic.",
           cautious_side: macro.sentence.slice(0, 260),
           comparison_side: other.sentence.slice(0, 260),
           evidence_index: [macro.evidence_index, other.evidence_index],
