@@ -176,7 +176,7 @@ def classify_question_intent(question: str) -> str:
         return "macro_narrative_read"
     if re.search(r"\b(company|filing|earnings|management|executive|ceo|cfo|margin|revenue|demand)\b", lower):
         return "company_language_read"
-    if re.search(r"\b(ai|chip|semiconductor|gpu|data center|tariff|china|supply chain)\b", lower):
+    if re.search(r"\b(ai|chip|semiconductor|gpu|data center|tariff|trade|import|export|supply chain|industrial policy|manufacturing)\b", lower):
         return "sector_theme_read"
     return "broad_market_narrative_scan"
 
@@ -367,7 +367,7 @@ def local_analyst(payload: dict) -> dict:
     plan = analysis_plan(payload)
     themes = {}
     source_types = {}
-    risk_terms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff"]
+    risk_terms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff", "import", "customs"]
     hedges = ["may", "could", "might", "monitor", "normalization", "subject to", "uncertain"]
     for item in evidence:
         themes[item.get("theme", "Unknown")] = themes.get(item.get("theme", "Unknown"), 0) + 1

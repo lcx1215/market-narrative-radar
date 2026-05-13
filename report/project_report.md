@@ -2,7 +2,7 @@
 
 ## Abstract
 
-Market Narrative Radar is an interactive text-as-data application for analyzing how public institutions, companies, regulators, researchers, and news sources describe market-relevant issues. The app is not a trading model. Its purpose is to collect public text, normalize it into one corpus, apply interpretable NLP methods, retrieve evidence, and show how different source groups frame themes such as artificial intelligence, interest rates, trade, regulation, demand, margins, and uncertainty.
+Market Narrative Radar is an interactive text-as-data application for analyzing how public institutions, companies, regulators, researchers, and news sources describe market-relevant issues. The app is not a trading model. Its purpose is to collect public text, normalize it into one corpus, apply interpretable NLP methods, retrieve evidence, and show how different source groups frame themes such as artificial intelligence, interest rates, U.S. policy and trade, regulation, demand, margins, and uncertainty.
 
 The project includes a reproducible demo corpus, but the main design is live-ready: a backend relay can fetch continuously updated public sources such as SEC EDGAR, the Federal Register, Federal Reserve feeds, New York Fed research posts, FTC competition releases, DOJ antitrust releases, CFTC releases, and GDELT news search. The browser interface then applies the same text analysis pipeline to both static and live documents.
 
@@ -32,7 +32,7 @@ All sources are normalized into the same schema: `id`, `date`, `source_type`, `s
 
 ## Methods
 
-The app uses an interpretable NLP pipeline. Documents are tokenized and scored with transparent theme dictionaries. The current themes are AI and semiconductors, rates and inflation, China and trade, regulation and antitrust, demand and margins, and risk and uncertainty. Scores are normalized by document length.
+The app uses an interpretable NLP pipeline. Documents are tokenized and scored with transparent theme dictionaries. The current themes are AI and semiconductors, rates and inflation, U.S. policy and trade, regulation and antitrust, demand and margins, and risk and uncertainty. Scores are normalized by document length.
 
 The app also computes a simple risk/constructive tone measure, extracts lightweight entities and tickers, reports corpus diagnostics, and ranks evidence passages. Corpus diagnostics include token volume, source diversity, lexical diversity, readability, and newest document date. The retrieval layer ranks sentences using query overlap, theme match, and risk-language intensity, while also favoring source diversity so that results do not come from only one document class.
 

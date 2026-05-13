@@ -10,7 +10,7 @@ It is not a trading system. It does not forecast returns, produce price targets,
 - Ships with a reproducible demo corpus so the app works immediately.
 - Refreshes live public sources through a backend data relay during analysis.
 - Normalizes all documents into one schema.
-- Scores themes such as AI and semiconductors, rates and inflation, China and trade, regulation and antitrust, demand and margins, and risk and uncertainty.
+- Scores themes such as AI and semiconductors, rates and inflation, U.S. policy and trade, regulation and antitrust, demand and margins, and risk and uncertainty.
 - Tracks watchlist terms and flags source/risk concentration.
 - Extracts lightweight entities and tickers from the filtered corpus.
 - Reports token volume, lexical diversity, readability, source diversity, and freshness.

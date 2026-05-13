@@ -183,7 +183,7 @@ def sec_latest_docs(cik: str, limit: int) -> list[dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--query", default="AI semiconductor tariff rates regulation")
+    parser.add_argument("--query", default="AI semiconductor tariff rates regulation manufacturing")
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--sec-cik", default="1045810", help="Default is NVIDIA.")
     args = parser.parse_args()

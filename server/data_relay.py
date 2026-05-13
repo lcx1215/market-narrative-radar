@@ -309,7 +309,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         params = urllib.parse.parse_qs(parsed.query)
-        query = params.get("query", ["artificial intelligence semiconductor tariff regulation"])[0]
+        query = params.get("query", ["artificial intelligence semiconductor tariff regulation manufacturing"])[0]
         limit = max(1, min(25, int(params.get("limit", ["8"])[0])))
         if parsed.path == "/api/health":
             body = {

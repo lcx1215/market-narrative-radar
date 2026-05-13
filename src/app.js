@@ -21,14 +21,18 @@ const THEMES = {
     "deficit",
     "debt",
   ],
-  "China & trade": [
-    "china",
+  "U.S. policy & trade": [
     "tariff",
     "trade",
+    "import",
     "export",
     "supply chain",
-    "geopolitical",
-    "taiwan",
+    "industrial policy",
+    "commerce department",
+    "customs",
+    "reshoring",
+    "domestic manufacturing",
+    "federal procurement",
     "manufacturing",
   ],
   "Regulation & antitrust": [
@@ -76,6 +80,9 @@ const RISK_WORDS = [
   "regulatory",
   "slowdown",
   "tariff",
+  "import",
+  "customs",
+  "industrial policy",
   "shortage",
 ];
 
@@ -519,9 +526,19 @@ function ageLabel(doc) {
   return "older";
 }
 
+function isDemoPlaceholder(doc = {}) {
+  const text = `${doc.id || ""} ${doc.title || ""} ${doc.source_url || ""} ${doc.text || ""}`.toLowerCase();
+  return (
+    text.includes("schema example") ||
+    text.includes("paste or import") ||
+    text.includes("user import")
+  );
+}
+
 function freshestDocs(docs) {
-  const dated = docs.filter((doc) => parsedDocTime(doc));
-  if (!dated.length) return docs;
+  const usableDocs = docs.filter((doc) => !isDemoPlaceholder(doc));
+  const dated = usableDocs.filter((doc) => parsedDocTime(doc));
+  if (!dated.length) return usableDocs;
   const recent48h = dated.filter((doc) => Date.now() - parsedDocTime(doc) <= 2 * 86400000);
   if (recent48h.length) return recent48h;
   const recent14d = dated.filter((doc) => Date.now() - parsedDocTime(doc) <= 14 * 86400000);
@@ -778,7 +795,7 @@ function classifyQuestionIntent(question = "") {
   if (/\b(company|filing|earnings|management|executive|ceo|cfo|margin|revenue|demand)\b/.test(lower)) {
     return "company_language_read";
   }
-  if (/\b(ai|chip|semiconductor|gpu|data center|tariff|china|supply chain)\b/.test(lower)) {
+  if (/\b(ai|chip|semiconductor|gpu|data center|tariff|trade|import|export|supply chain|industrial policy|manufacturing)\b/.test(lower)) {
     return "sector_theme_read";
   }
   return "broad_market_narrative_scan";
@@ -964,7 +981,7 @@ function createLocalAnalystJson(docs, evidence) {
   const plan = buildAnalysisPlan($("questionBox").value, evidence, sourceConflicts);
   const sourceCounts = new Map();
   const themeCounts = new Map();
-  const riskTerms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff", "investigation", "shortage"];
+  const riskTerms = ["risk", "uncertain", "volatility", "pressure", "challenge", "regulation", "tariff", "investigation", "shortage", "import", "customs"];
   const hedgeTerms = ["may", "could", "might", "monitor", "uncertain", "expects", "subject to", "approximately", "likely"];
 
   evidence.forEach((item) => {
@@ -1371,7 +1388,7 @@ async function runSelectedEngine() {
   $("analystOutput").innerHTML = "";
 
   const analysisController = new AbortController();
-  const analysisTimeout = window.setTimeout(() => analysisController.abort(), 45000);
+  const analysisTimeout = window.setTimeout(() => analysisController.abort(), 16000);
   try {
     const response = await fetch(LLM_RELAY_ENDPOINT, {
       method: "POST",
@@ -1461,7 +1478,7 @@ async function refreshLiveCorpusForQuestion(question) {
   if (query) url.searchParams.set("query", query);
   url.searchParams.set("limit", "8");
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 20000);
+  const timeout = window.setTimeout(() => controller.abort(), 6500);
   try {
     const response = await fetch(url.toString(), { signal: controller.signal });
     if (!response.ok) throw new Error(`Data relay returned ${response.status}`);
@@ -1510,6 +1527,19 @@ function saveState() {
 function restoreState() {
   try {
     const state = JSON.parse(localStorage.getItem("marketNarrativeRadarState") || "{}");
+    if (typeof state.questionBox === "string") {
+      state.questionBox = state.questionBox
+        .replace(/China trade/gi, "U.S. policy and trade")
+        .replace(/China & trade/gi, "U.S. policy and trade");
+    }
+    if (typeof state.watchlistBox === "string") {
+      state.watchlistBox = state.watchlistBox
+        .replace(/\bChina,\s*/gi, "")
+        .replace(/,\s*China\b/gi, "");
+    }
+    if (typeof state.liveQueryBox === "string") {
+      state.liveQueryBox = state.liveQueryBox.replace(/\bchina\b/gi, "manufacturing");
+    }
     for (const [key, value] of Object.entries(state)) {
       if ($(key) && value !== undefined) $(key).value = value;
     }

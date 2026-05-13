@@ -26,9 +26,11 @@ MARKET_TERMS = [
     "inflation",
     "interest rate",
     "federal reserve",
-    "china",
     "trade",
     "tariff",
+    "import",
+    "customs",
+    "industrial policy",
     "technology",
     "artificial intelligence",
     "chip",
@@ -40,6 +42,7 @@ MARKET_TERMS = [
     "market",
     "investment",
     "supply chain",
+    "manufacturing",
 ]
 
 SEC_FILINGS = [

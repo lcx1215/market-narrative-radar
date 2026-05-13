@@ -6,7 +6,7 @@ This project keeps the interface simple, but the app uses text-as-data methods f
 
 - **Tokenization and word frequency**: `src/app.js` tokenizes public documents, counts theme words, and normalizes scores by document length.
 - **Named entities and information extraction**: the app extracts organizations, agencies, capitalized actors, and tickers for the entity radar.
-- **Dictionary scoring**: the app scores themes such as AI, rates, China trade, regulation, demand, and risk language.
+- **Dictionary scoring**: the app scores themes such as AI, rates, U.S. policy and trade, regulation, demand, and risk language.
 - **Sentence retrieval**: the app ranks evidence sentences by question overlap, theme match, and risk-language intensity.
 - **Source-specific preprocessing**: the app switches reading rules for filings, interviews, regulator text, policy speech, macro research, news, commentary, and video transcripts.
 - **Source comparison**: the app compares source groups such as company filings, regulators, policymakers, macro research, and media.
