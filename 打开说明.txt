@@ -1,8 +1,22 @@
-双击这个文件夹里的：
+推荐双击这个文件夹里的：
+
+Market Narrative Radar.app
+
+它会直接打开网页，不会弹出终端窗口。
+
+如果服务已经在后台运行，也可以双击：
+
+Market Narrative Radar.webloc
+
+这个只是网页快捷方式，会直接打开：
+
+http://127.0.0.1:8765
+
+如果服务没有运行，备用启动入口是：
 
 Open Market Narrative Radar.command
 
-它会自动启动网页、数据接口、MiniMax 后端接口，并打开浏览器。
+它能启动网页、数据接口、MiniMax 后端接口，但 macOS 会显示终端窗口。
 
 打开后点击：
 

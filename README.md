@@ -30,10 +30,14 @@ It is not a trading system. It does not forecast returns, produce price targets,
 On macOS, double-click:
 
 ```text
-Open Market Narrative Radar.command
+Market Narrative Radar.app
 ```
 
-That starts the local services and opens the app.
+That opens the local app page without showing a terminal window.
+
+If the services are already running, `Market Narrative Radar.webloc` opens the local page directly.
+
+`Open Market Narrative Radar.command` is kept as the cold-start backup launcher for starting the local services.
 
 Command-line startup is also available:
 
