@@ -1,0 +1,19 @@
+双击这个文件夹里的：
+
+Open Market Narrative Radar.command
+
+它会自动启动网页、数据接口、MiniMax 后端接口，并打开浏览器。
+
+打开后点击：
+
+Pay $1 & generate
+
+本地课程 demo 不会真的扣费。MiniMax key 只在本机 .env 里，网页和 GitHub 都看不到。
+
+如果想手动检查状态，在终端进入这个文件夹后运行：
+
+make status
+
+如果想停止服务：
+
+make stop
