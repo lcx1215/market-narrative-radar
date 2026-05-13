@@ -27,18 +27,44 @@ It is not a trading system. It does not forecast returns, produce price targets,
 
 ## Quick Demo
 
-Start the three local processes:
+Start the local product loop:
 
 ```bash
-python3 -m http.server 8765
-python3 server/data_relay.py
-python3 server/llm_relay.py
+make restart
 ```
 
 Open:
 
 ```text
 http://localhost:8765
+```
+
+Run a real smoke test:
+
+```bash
+make test
+```
+
+If you intentionally want to exercise the configured provider key, run:
+
+```bash
+make test-provider
+```
+
+Stop everything cleanly:
+
+```bash
+make stop
+```
+
+The runtime writes PID files and logs under `.mnr-runtime/`, which is ignored by Git.
+
+Manual startup is also possible:
+
+```bash
+python3 -m http.server 8765
+python3 server/data_relay.py
+python3 server/llm_relay.py
 ```
 
 Click `Generate brief`. The app refreshes public sources in the background, retrieves evidence passages, and produces an analyst memo with confidence, direct claims, implied signals, source tensions, risk flags, missing evidence, and watch items.
@@ -147,6 +173,15 @@ This is a text-as-data project. The core work is corpus construction, public-sou
 python3 scripts/validate_project.py
 ```
 
+For local product QA:
+
+```bash
+make restart
+make test
+make test-provider
+make clean
+```
+
 ## Project Files
 
 - `index.html`: app shell.
@@ -158,6 +193,7 @@ python3 scripts/validate_project.py
 - `server/llm_relay.py`: optional replaceable LLM relay.
 - `scripts/build_corpus.py`: corpus builder.
 - `scripts/fetch_live_sources.py`: command-line live-source fetcher.
+- `scripts/mnr.py`: clean local start/stop/status/test loop.
 - `scripts/validate_project.py`: package validation.
 - `report/project_report.md`: research report.
 - `docs/teacher_review_checklist.md`: short grading/demo checklist.

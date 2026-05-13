@@ -1427,7 +1427,7 @@ async function fetchLiveSources() {
 
 async function refreshLiveCorpusForQuestion(question) {
   const url = new URL(DATA_RELAY_ENDPOINT);
-  const query = question.trim() || $("liveQueryBox").value.trim();
+  const query = keyQuestionTerms(question).slice(0, 6).join(" ") || $("liveQueryBox").value.trim();
   if (query) url.searchParams.set("query", query);
   url.searchParams.set("limit", "8");
   const controller = new AbortController();

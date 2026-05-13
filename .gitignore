@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 node_modules/
 dist/
+.mnr-runtime/
 .env
 .env.*
 !.env.example

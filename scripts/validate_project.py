@@ -30,8 +30,10 @@ REQUIRED_FILES = [
     "report/project_report.md",
     "scripts/build_corpus.py",
     "scripts/fetch_live_sources.py",
+    "scripts/mnr.py",
     "server/llm_relay.py",
     "server/data_relay.py",
+    "Makefile",
     ".env.example",
 ]
 
@@ -99,7 +101,7 @@ def main() -> None:
     validate_json()
     validate_copy()
     run(["node", "--check", "src/app.js"])
-    run(["python3", "-m", "py_compile", "scripts/build_corpus.py", "scripts/fetch_live_sources.py", "server/llm_relay.py", "server/data_relay.py"])
+    run(["python3", "-m", "py_compile", "scripts/build_corpus.py", "scripts/fetch_live_sources.py", "scripts/mnr.py", "server/llm_relay.py", "server/data_relay.py"])
     print("project validation passed")
 
 
