@@ -30,6 +30,7 @@ REQUIRED_FILES = [
     "docs/course_methods_map.md",
     "docs/source_processing.md",
     "docs/source_registry.md",
+    "docs/product_readiness.md",
     "report/project_report.md",
     "scripts/build_corpus.py",
     "scripts/fetch_live_sources.py",

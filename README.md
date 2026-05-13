@@ -209,6 +209,7 @@ make clean
 - `docs/analysis_contract.md`: fixed RAG/tool/DAG reasoning contract.
 - `docs/source_processing.md`: source-aware cleaning and interpretation rules.
 - `docs/source_registry.md`: public-source registry and source health posture.
+- `docs/product_readiness.md`: local product-readiness and hosted SaaS gaps.
 - `docs/replication_package.md`: replication instructions.
 - `docs/data_dictionary.md`: data schema.
 - `docs/engines.md`: data and LLM engine documentation.

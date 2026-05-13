@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -32,6 +33,8 @@ DEFAULT_CIKS = {
     "META": "0001326801",
     "TSLA": "0001318605",
 }
+CACHE_TTL_SECONDS = int(os.environ.get("MNR_DATA_CACHE_TTL_SECONDS", "300"))
+LIVE_CACHE: dict[str, tuple[float, dict]] = {}
 
 
 def fetch(url: str, accept: str = "application/json,text/html,application/xml,*/*") -> str:
@@ -309,8 +312,28 @@ class Handler(BaseHTTPRequestHandler):
         query = params.get("query", ["artificial intelligence semiconductor tariff regulation"])[0]
         limit = max(1, min(25, int(params.get("limit", ["8"])[0])))
         if parsed.path == "/api/health":
-            body = {"ok": True, "sources": ["SEC EDGAR", "GDELT", "Federal Register", "Federal Reserve RSS", "Congress.gov optional"]}
+            body = {
+                "ok": True,
+                "cache_ttl_seconds": CACHE_TTL_SECONDS,
+                "cache_entries": len(LIVE_CACHE),
+                "sources": ["SEC EDGAR", "GDELT", "Federal Register", "Federal Reserve RSS", "Congress.gov optional"],
+            }
         else:
+            cache_key = json.dumps({"query": query, "limit": limit}, sort_keys=True)
+            cached = LIVE_CACHE.get(cache_key)
+            if cached and time.time() - cached[0] < CACHE_TTL_SECONDS:
+                body = {**cached[1], "cached": True}
+                payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                try:
+                    self.wfile.write(payload)
+                except BrokenPipeError:
+                    return
+                return
             docs = []
             health = []
             for name, fn in [
@@ -332,7 +355,9 @@ class Handler(BaseHTTPRequestHandler):
                 "sources": [item["source"] for item in health if item.get("ok")],
                 "health": health,
                 "query": query,
+                "cached": False,
             }
+            LIVE_CACHE[cache_key] = (time.time(), body)
         payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")

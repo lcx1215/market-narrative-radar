@@ -243,6 +243,11 @@ def smoke_test(use_provider: bool) -> None:
     assert health.get("ok") is True
     print_line("data: health ok")
 
+    llm_health = request_json(f"http://127.0.0.1:{LLM_PORT}/api/health", timeout=10)
+    assert llm_health.get("ok") is True
+    assert llm_health.get("secrets_exposed") is False
+    print_line(f"llm: health ok providers={','.join(llm_health.get('providers', []))}")
+
     query = urllib.parse.urlencode({"query": "AI infrastructure regulation demand", "limit": "2"})
     live = request_json(f"http://127.0.0.1:{DATA_PORT}/api/live-sources?{query}", timeout=45)
     docs = live.get("documents") or []

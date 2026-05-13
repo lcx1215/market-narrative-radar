@@ -4,8 +4,16 @@ Use this guide to demonstrate the app in a few minutes.
 
 ## 1. Open the App
 
+On macOS, double-click:
+
+```text
+Open Market Narrative Radar.command
+```
+
+Or run:
+
 ```bash
-python3 -m http.server 8765
+make open
 ```
 
 Open:
@@ -14,19 +22,23 @@ Open:
 http://localhost:8765
 ```
 
-The demo corpus loads automatically.
+The demo corpus loads automatically. The command also starts the live data relay and the LLM relay.
 
-## 2. Start Live Ingestion
+## 2. Confirm Health
 
-Start the data relay:
+Run:
 
 ```bash
-python3 server/data_relay.py
+make test
 ```
 
-No extra UI step is needed. The next `Analyze` click refreshes public sources in the background.
+For the configured private model path:
 
-Expected result: the answer cites a mix of demo and live SEC, Federal Register, Federal Reserve, NY Fed, FTC, DOJ, CFTC, or GDELT documents when those sources return relevant text.
+```bash
+make test-provider
+```
+
+Expected result: the app HTML loads, live sources return documents, and the LLM relay returns structured analyst JSON.
 
 ## 3. Ask a Question
 
@@ -36,7 +48,7 @@ Use:
 What changed in the AI, rates, and regulation narrative?
 ```
 
-Click `Analyze`.
+Click `Generate brief`.
 
 The answer should cite retrieved passages and separate explicit claims from interpretation.
 
@@ -61,3 +73,9 @@ python3 scripts/validate_project.py
 ```
 
 This checks required files, data schemas, banned visible phrases, JavaScript syntax, and Python syntax.
+
+## Private Model Key
+
+The browser never asks for a model key. MiniMax, OpenAI-compatible, Anthropic, or Ollama configuration stays in local environment variables or `.env`, which is ignored by Git.
+
+For a private instructor demo on the same machine, keep `.env` local and run `make open`. The LLM health endpoint reports provider names and rate-limit status, but never returns the secret value.

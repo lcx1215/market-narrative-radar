@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -65,6 +66,7 @@ ALLOWED_INTENTS = {
     "sector_theme_read",
     "broad_market_narrative_scan",
 }
+REQUEST_TIMES: list[float] = []
 
 ANALYST_PROMPT = f"""You are a public financial and policy text analyst.
 Use only the retrieved evidence. Do not provide trading advice, price targets,
@@ -640,13 +642,64 @@ def auto_provider(payload: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
+def configured_providers() -> list[str]:
+    providers = []
+    if os.environ.get("MINIMAX_API_KEY"):
+        providers.append("minimax-compatible")
+    if os.environ.get("OPENAI_API_KEY"):
+        providers.append("openai-compatible")
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        providers.append("anthropic-compatible")
+    if os.environ.get("OLLAMA_MODEL"):
+        providers.append("ollama")
+    providers.append("local")
+    return providers
+
+
+def rate_limit_status() -> dict:
+    now = time.time()
+    limit = int(os.environ.get("MNR_MAX_ANALYSES_PER_MINUTE", "8"))
+    REQUEST_TIMES[:] = [item for item in REQUEST_TIMES if item >= now - 60]
+    return {"limit": limit, "used": len(REQUEST_TIMES), "remaining": max(0, limit - len(REQUEST_TIMES))}
+
+
+def consume_rate_limit() -> bool:
+    status = rate_limit_status()
+    if status["remaining"] <= 0:
+        return False
+    REQUEST_TIMES.append(time.time())
+    return True
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
+
+    def do_GET(self) -> None:
+        if self.path != "/api/health":
+            self.send_error(404)
+            return
+        providers = configured_providers()
+        body = json.dumps(
+            {
+                "ok": True,
+                "default_engine": "auto",
+                "providers": providers,
+                "provider_ready": providers[0] != "local",
+                "rate_limit": rate_limit_status(),
+                "secrets_exposed": False,
+            }
+        ).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self) -> None:
         if self.path != "/api/analyze":
@@ -656,6 +709,15 @@ class Handler(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(length).decode("utf-8"))
         engine = payload.get("engine", "local")
         try:
+            if not consume_rate_limit():
+                body = json.dumps({"error": "rate_limit_exceeded", "rate_limit": rate_limit_status()}).encode("utf-8")
+                self.send_response(429)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             analyst = payload.get("analysis_mode") == "analyst"
             override_provider, override_summary = provider_override(payload)
             if override_summary:

@@ -223,6 +223,7 @@ const DATA_SOURCE_ENGINES = [
 
 const ANALYSIS_ENGINE = "auto";
 const LLM_RELAY_ENDPOINT = "http://127.0.0.1:8787/api/analyze";
+const LLM_HEALTH_ENDPOINT = "http://127.0.0.1:8787/api/health";
 const DATA_RELAY_ENDPOINT = "http://127.0.0.1:8790/api/live-sources";
 const ANALYSIS_CONTRACT = {
   pipeline: [
@@ -1167,6 +1168,18 @@ function showStatus(message) {
   if ($("analysisStatus")) $("analysisStatus").textContent = message;
 }
 
+async function checkRelayHealth() {
+  try {
+    const response = await fetch(LLM_HEALTH_ENDPOINT);
+    if (!response.ok) throw new Error(`Relay health returned ${response.status}`);
+    const payload = await response.json();
+    const primary = payload.providers?.[0] || "local";
+    showStatus(payload.provider_ready ? `Model relay ready: ${primary}.` : "Model relay ready: local fallback.");
+  } catch {
+    showStatus("Model relay not running; local browser analysis remains available.");
+  }
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -1664,3 +1677,4 @@ $("csvUpload").addEventListener("change", async (event) => {
 renderEngines();
 restoreState();
 loadSampleCorpus();
+checkRelayHealth();
