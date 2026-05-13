@@ -250,6 +250,25 @@ main {
   text-transform: uppercase;
 }
 
+.age-chip {
+  background: rgba(159, 242, 106, 0.12);
+  border: 1px solid rgba(159, 242, 106, 0.24);
+  border-radius: 999px;
+  color: var(--accent-2);
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 6px;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+
+.age-chip.old {
+  background: rgba(255, 184, 108, 0.12);
+  border-color: rgba(255, 184, 108, 0.24);
+  color: var(--warn);
+}
+
 .paid-note {
   color: var(--muted);
   font-size: 13px;

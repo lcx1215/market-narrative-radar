@@ -499,12 +499,43 @@ function splitSentences(text) {
     .filter((sentence) => sentence.length > 80 && sentence.length < 520);
 }
 
+function hasOldYearMention(text = "") {
+  const minYear = new Date().getFullYear() - 1;
+  return [...String(text).matchAll(/\b(19\d{2}|20\d{2})\b/g)].some((match) => Number(match[1]) < minYear);
+}
+
+function parsedDocTime(doc) {
+  const value = Date.parse(doc.date || "");
+  return Number.isFinite(value) ? value : 0;
+}
+
+function ageLabel(doc) {
+  const time = parsedDocTime(doc);
+  if (!time) return "undated";
+  const days = Math.floor((Date.now() - time) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days <= 14) return `${days} days ago`;
+  return "older";
+}
+
+function freshestDocs(docs) {
+  const dated = docs.filter((doc) => parsedDocTime(doc));
+  if (!dated.length) return docs;
+  const recent48h = dated.filter((doc) => Date.now() - parsedDocTime(doc) <= 2 * 86400000);
+  if (recent48h.length) return recent48h;
+  const recent14d = dated.filter((doc) => Date.now() - parsedDocTime(doc) <= 14 * 86400000);
+  if (recent14d.length) return recent14d;
+  return [];
+}
+
 function retrieveEvidence(docs, question = "") {
+  const sourceDocs = freshestDocs(docs);
   const qTokens = new Set(tokenize(question));
   const rows = [];
-  for (const doc of docs) {
+  for (const doc of sourceDocs) {
     const [theme, themeScore] = dominantTheme(doc);
-    const sentences = splitSentences(doc.text).slice(0, 12);
+    const sentences = splitSentences(doc.text).filter((sentence) => !hasOldYearMention(sentence)).slice(0, 12);
     for (const sentence of sentences) {
       const tokens = tokenize(sentence);
       const overlap = tokens.reduce((sum, token) => sum + (qTokens.has(token) ? 1 : 0), 0);
@@ -512,7 +543,8 @@ function retrieveEvidence(docs, question = "") {
         overlap * 2 +
         scoreTheme({ ...doc, text: sentence }, theme) +
         scoreWords({ ...doc, text: sentence }, RISK_WORDS) * 0.4 +
-        themeScore * 0.25;
+        themeScore * 0.25 +
+        Math.min(3, Math.max(0, 14 - ((Date.now() - parsedDocTime(doc)) / 86400000))) * 0.25;
       rows.push({ doc, theme, sentence, score });
     }
   }
@@ -1182,7 +1214,7 @@ function renderEvidence(evidence) {
         : escapeHtml(doc.source_url || "");
       return `<tr>
         <td>${escapeHtml(doc.source_type)}<br>${url}</td>
-        <td>${escapeHtml(doc.date || "")}</td>
+        <td>${escapeHtml(doc.date || "")}<br><span class="age-chip ${ageLabel(doc) === "older" ? "old" : ""}">${escapeHtml(ageLabel(doc))}</span></td>
         <td>${escapeHtml(doc.title || "")}</td>
         <td><span class="theme-chip">${escapeHtml(theme)}</span></td>
         <td>${escapeHtml(sentence)}</td>
