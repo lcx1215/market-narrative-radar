@@ -97,6 +97,22 @@ button:disabled {
   padding: 54px 24px 20px;
 }
 
+.app-header > div {
+  flex: 1 1 560px;
+}
+
+.hero-visual {
+  aspect-ratio: 4 / 3;
+  border-radius: 18px;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.36),
+    0 0 44px rgba(32, 214, 255, 0.12);
+  flex: 0 1 420px;
+  max-width: 42%;
+  min-width: 320px;
+  object-fit: cover;
+}
+
 .product-label {
   color: var(--accent);
   font-size: 13px;
@@ -161,6 +177,41 @@ main {
   grid-template-columns: minmax(220px, 0.5fr) minmax(380px, 1fr);
   margin-bottom: 16px;
   padding: 24px;
+}
+
+.simple-flow {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 16px;
+}
+
+.flow-card {
+  background: rgba(7, 11, 18, 0.66);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-height: 132px;
+  padding: 18px;
+}
+
+.flow-card span {
+  color: var(--accent);
+  display: block;
+  font-size: 12px;
+  font-weight: 850;
+  margin-bottom: 12px;
+}
+
+.flow-card strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.flow-card p {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 10px 0 0;
 }
 
 .query-panel p {
@@ -1020,8 +1071,14 @@ footer {
   .three-column,
   .method-grid,
   .engine-main,
-  .query-panel {
+  .query-panel,
+  .simple-flow {
     grid-template-columns: 1fr;
+  }
+
+  .hero-visual {
+    max-width: 100%;
+    width: 100%;
   }
 
   .engine-cards {

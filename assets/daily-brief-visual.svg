@@ -1,0 +1,53 @@
+<svg width="560" height="420" viewBox="0 0 560 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Daily market narrative visual</title>
+  <desc id="desc">A stylized market intelligence screen showing public sources flowing into a daily narrative brief.</desc>
+  <rect width="560" height="420" rx="24" fill="#07101A"/>
+  <rect x="18" y="18" width="524" height="384" rx="20" fill="url(#bg)" stroke="#214055"/>
+  <g opacity="0.48">
+    <path d="M56 98H504" stroke="#214055"/>
+    <path d="M56 154H504" stroke="#214055"/>
+    <path d="M56 210H504" stroke="#214055"/>
+    <path d="M56 266H504" stroke="#214055"/>
+    <path d="M56 322H504" stroke="#214055"/>
+    <path d="M112 62V358" stroke="#214055"/>
+    <path d="M196 62V358" stroke="#214055"/>
+    <path d="M280 62V358" stroke="#214055"/>
+    <path d="M364 62V358" stroke="#214055"/>
+    <path d="M448 62V358" stroke="#214055"/>
+  </g>
+  <rect x="52" y="54" width="160" height="52" rx="12" fill="#0E1A28" stroke="#20D6FF" stroke-opacity="0.42"/>
+  <rect x="52" y="122" width="160" height="52" rx="12" fill="#0E1A28" stroke="#7D8CFF" stroke-opacity="0.42"/>
+  <rect x="52" y="190" width="160" height="52" rx="12" fill="#0E1A28" stroke="#9FF26A" stroke-opacity="0.38"/>
+  <rect x="52" y="258" width="160" height="52" rx="12" fill="#0E1A28" stroke="#FFB86C" stroke-opacity="0.4"/>
+  <text x="72" y="84" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Company filings</text>
+  <text x="72" y="152" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Policy text</text>
+  <text x="72" y="220" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Research blogs</text>
+  <text x="72" y="288" fill="#EAF6FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Market news</text>
+  <path d="M226 80C270 80 274 134 314 134" stroke="#20D6FF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M226 148C276 148 284 176 314 176" stroke="#7D8CFF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M226 216C274 216 284 204 314 204" stroke="#9FF26A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M226 284C274 284 284 238 314 238" stroke="#FFB86C" stroke-width="3" stroke-linecap="round"/>
+  <rect x="314" y="72" width="190" height="236" rx="18" fill="#101C2B" stroke="#2B4B63"/>
+  <text x="338" y="108" fill="#20D6FF" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing=".08em">TODAY'S BRIEF</text>
+  <rect x="338" y="132" width="138" height="10" rx="5" fill="#EAF6FF" opacity="0.88"/>
+  <rect x="338" y="154" width="112" height="8" rx="4" fill="#93A4B8" opacity="0.72"/>
+  <rect x="338" y="184" width="142" height="42" rx="10" fill="#07101A" stroke="#214055"/>
+  <circle cx="358" cy="205" r="8" fill="#9FF26A"/>
+  <rect x="376" y="195" width="82" height="7" rx="3.5" fill="#EAF6FF" opacity="0.82"/>
+  <rect x="376" y="211" width="54" height="6" rx="3" fill="#93A4B8" opacity="0.66"/>
+  <rect x="338" y="242" width="142" height="42" rx="10" fill="#07101A" stroke="#214055"/>
+  <circle cx="358" cy="263" r="8" fill="#FFB86C"/>
+  <rect x="376" y="253" width="76" height="7" rx="3.5" fill="#EAF6FF" opacity="0.82"/>
+  <rect x="376" y="269" width="66" height="6" rx="3" fill="#93A4B8" opacity="0.66"/>
+  <rect x="114" y="338" width="332" height="28" rx="14" fill="#07101A" stroke="#214055"/>
+  <rect x="130" y="349" width="92" height="6" rx="3" fill="#20D6FF"/>
+  <rect x="238" y="349" width="68" height="6" rx="3" fill="#7D8CFF"/>
+  <rect x="322" y="349" width="108" height="6" rx="3" fill="#9FF26A"/>
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(142 72) rotate(48.5) scale(394 493)">
+      <stop stop-color="#0B3341"/>
+      <stop offset="0.48" stop-color="#101827"/>
+      <stop offset="1" stop-color="#070B12"/>
+    </radialGradient>
+  </defs>
+</svg>

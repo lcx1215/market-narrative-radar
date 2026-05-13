@@ -13,17 +13,22 @@
         <p class="product-label">Public Text Intelligence</p>
         <h1>Market Narrative Radar</h1>
         <p class="lede">
-          Generate a daily read of public market and policy text. The app refreshes sources,
-          compares institutional language, and returns an evidence-grounded narrative brief.
+          A daily market narrative brief built from public filings, policy text,
+          central bank language, research blogs, and news.
         </p>
       </div>
+      <img
+        class="hero-visual"
+        src="assets/daily-brief-visual.svg"
+        alt="Daily public sources flowing into a market narrative brief"
+      />
     </header>
 
     <main>
       <section class="panel query-panel" aria-label="Daily market narrative brief">
         <div>
           <h2>Daily narrative brief</h2>
-          <p>One click refreshes public sources, retrieves evidence, and runs the fixed analyst JSON contract.</p>
+          <p>Click once to see what changed across the latest public sources.</p>
         </div>
         <div class="ask-box">
           <textarea id="questionBox" class="utility-dock" rows="4">What changed today across AI, rates, regulation, China trade, demand, margins, and risk language?</textarea>
@@ -35,12 +40,30 @@
             <span>Demand</span>
             <span>Risk language</span>
           </div>
-          <p class="paid-note">Hosted version concept: $1 per daily brief. This local build does not charge or expose keys.</p>
+          <p class="paid-note">Demo product idea: $1 per generated daily brief. This local build does not charge.</p>
           <div class="ask-row">
             <span id="analysisStatus">Ready to generate today's public-text brief.</span>
             <button id="askButton" class="primary">Generate brief</button>
           </div>
         </div>
+      </section>
+
+      <section class="simple-flow" aria-label="How the daily brief works">
+        <article class="flow-card">
+          <span>01</span>
+          <strong>Pull daily sources</strong>
+          <p>Filings, regulators, central banks, research blogs, Congress, and news.</p>
+        </article>
+        <article class="flow-card">
+          <span>02</span>
+          <strong>Compare the language</strong>
+          <p>Who sounds optimistic, cautious, defensive, or worried.</p>
+        </article>
+        <article class="flow-card">
+          <span>03</span>
+          <strong>Return a brief</strong>
+          <p>Clear takeaways, confidence, source gaps, and evidence links.</p>
+        </article>
       </section>
 
       <section class="dashboard-grid utility-dock">
@@ -134,8 +157,8 @@
         <article class="panel brief-panel">
           <div class="panel-heading">
             <div>
-              <h2>Analyst Answer</h2>
-              <p>Daily interpretation from retrieved source text; no trading recommendation is produced.</p>
+              <h2>Today's brief</h2>
+              <p>Plain-English interpretation from retrieved public text.</p>
             </div>
             <button id="copyBrief" class="secondary">Copy brief</button>
           </div>
