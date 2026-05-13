@@ -232,6 +232,7 @@ const ANALYSIS_ENGINE = "auto";
 const LLM_RELAY_ENDPOINT = "http://127.0.0.1:8787/api/analyze";
 const LLM_HEALTH_ENDPOINT = "http://127.0.0.1:8787/api/health";
 const DATA_RELAY_ENDPOINT = "http://127.0.0.1:8790/api/live-sources";
+const DATA_REFRESH_TIMEOUT_MS = 32000;
 const ANALYSIS_CONTRACT = {
   pipeline: [
     "classify_question",
@@ -279,8 +280,10 @@ const ALLOWED_INTENTS = new Set([
 ]);
 
 let corpus = [];
+let baselineCorpus = [];
 let activeEvidence = [];
 let latestLiveHealth = [];
+let latestSourceStatus = "Demo corpus";
 
 const $ = (id) => document.getElementById(id);
 
@@ -329,12 +332,12 @@ function normalizePercent(value, max) {
   return Math.max(2, Math.round((value / max) * 100));
 }
 
-function filteredCorpus() {
+function filteredDocsFrom(docs) {
   const ticker = $("tickerFilter").value.trim().toLowerCase();
   const source = $("sourceFilter").value;
   const theme = $("themeFilter").value;
   const limit = Number($("docLimit").value || 120);
-  return corpus
+  return docs
     .filter((doc) => {
       const haystack = `${doc.ticker || ""} ${doc.title || ""} ${doc.text || ""} ${
         doc.organization || ""
@@ -345,6 +348,10 @@ function filteredCorpus() {
       return true;
     })
     .slice(0, limit);
+}
+
+function filteredCorpus() {
+  return filteredDocsFrom(corpus);
 }
 
 function populateFilters() {
@@ -1310,6 +1317,142 @@ function renderCitationAudit(evidence) {
   `;
 }
 
+function formatSourceTypes(items) {
+  const sources = [...new Set(items.map((item) => item.doc?.source_type || item.source_type).filter(Boolean))];
+  if (!sources.length) return "No sources";
+  if (sources.length <= 3) return sources.join(", ");
+  return `${sources.slice(0, 3).join(", ")} +${sources.length - 3}`;
+}
+
+function freshnessLabel(items) {
+  const times = items
+    .map((item) => parsedDocTime(item.doc || item))
+    .filter(Boolean)
+    .sort((a, b) => b - a);
+  if (!times.length) return "No date";
+  return new Date(times[0]).toISOString().slice(0, 10);
+}
+
+function docKey(doc) {
+  return doc.id || doc.source_url || `${doc.title || ""}-${doc.date || ""}`;
+}
+
+function scoreShareByTheme(docs) {
+  const summary = summarizeCorpus(docs);
+  const total = summary.themeScores.reduce((sum, [, value]) => sum + value, 0) || 1;
+  return Object.fromEntries(summary.themeScores.map(([theme, value]) => [theme, value / total]));
+}
+
+function formatDelta(value) {
+  const points = Math.round(Math.abs(value) * 100);
+  return `${value >= 0 ? "+" : "-"}${points} pts`;
+}
+
+function themeShiftRows(currentDocs, baselineDocs) {
+  if (!currentDocs.length || !baselineDocs.length) return [];
+  const current = scoreShareByTheme(currentDocs);
+  const baseline = scoreShareByTheme(baselineDocs);
+  return Object.keys(THEMES)
+    .map((theme) => ({
+      theme,
+      delta: (current[theme] || 0) - (baseline[theme] || 0),
+    }))
+    .filter((row) => Math.abs(row.delta) >= 0.01)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+function renderNarrativeShift(docs) {
+  if (!$("narrativeShift")) return;
+  const baselineDocs = filteredDocsFrom(baselineCorpus);
+  const baselineKeys = new Set(baselineCorpus.map(docKey));
+  const newDocs = docs.filter((doc) => !baselineKeys.has(docKey(doc)));
+  const comparisonDocs = newDocs.length ? newDocs : [];
+
+  if (!baselineDocs.length) {
+    $("narrativeShift").innerHTML = "";
+    return;
+  }
+
+  if (!comparisonDocs.length) {
+    $("narrativeShift").innerHTML = `
+      <div>
+        <span>Narrative shift</span>
+        <strong>Baseline ready</strong>
+        <small>Refresh sources or import text to compare new language.</small>
+      </div>
+    `;
+    return;
+  }
+
+  const rows = themeShiftRows(comparisonDocs, baselineDocs);
+  const rising = rows.filter((row) => row.delta > 0).slice(0, 2);
+  const cooling = rows.filter((row) => row.delta < 0).slice(0, 2);
+  const riskDelta =
+    comparisonDocs.reduce((sum, doc) => sum + scoreWords(doc, RISK_WORDS), 0) /
+      Math.max(1, comparisonDocs.length) -
+    baselineDocs.reduce((sum, doc) => sum + scoreWords(doc, RISK_WORDS), 0) /
+      Math.max(1, baselineDocs.length);
+  const sources = [...new Set(comparisonDocs.map((doc) => doc.source_type).filter(Boolean))].slice(0, 3);
+  const fallback = [{ theme: "No clear theme move", delta: 0 }];
+  const renderRows = (items) =>
+    (items.length ? items : fallback)
+      .map(
+        (row) =>
+          `<li><strong>${escapeHtml(row.theme)}</strong><span>${escapeHtml(
+            row.delta ? formatDelta(row.delta) : "flat",
+          )}</span></li>`,
+      )
+      .join("");
+
+  $("narrativeShift").innerHTML = `
+    <div class="shift-head">
+      <span>Narrative shift</span>
+      <strong>${comparisonDocs.length} new documents vs baseline</strong>
+      <small>${escapeHtml(sources.join(", ") || "New source mix")}</small>
+    </div>
+    <div>
+      <span>Rising</span>
+      <ul>${renderRows(rising)}</ul>
+    </div>
+    <div>
+      <span>Cooling</span>
+      <ul>${renderRows(cooling)}</ul>
+    </div>
+    <div>
+      <span>Risk language</span>
+      <strong>${escapeHtml(riskDelta >= 0.15 ? "Higher" : riskDelta <= -0.15 ? "Lower" : "Little changed")}</strong>
+      <small>${escapeHtml(formatDelta(riskDelta / 4))}</small>
+    </div>
+  `;
+}
+
+function renderCoverageSummary(docs, evidence) {
+  const liveOk = latestLiveHealth.filter((item) => item.ok);
+  const liveFailed = latestLiveHealth.filter((item) => !item.ok);
+  const sourceTypes = new Set(evidence.map((item) => item.doc.source_type).filter(Boolean));
+  const liveText = latestLiveHealth.length
+    ? `${liveOk.length} live sources ok${liveFailed.length ? `, ${liveFailed.length} limited` : ""}`
+    : latestSourceStatus;
+  $("coverageSummary").innerHTML = `
+    <div>
+      <span>Coverage</span>
+      <strong>${escapeHtml(formatSourceTypes(evidence))}</strong>
+    </div>
+    <div>
+      <span>Freshness</span>
+      <strong>${escapeHtml(freshnessLabel(evidence.length ? evidence : docs))}</strong>
+    </div>
+    <div>
+      <span>Evidence</span>
+      <strong>${evidence.length} passages / ${sourceTypes.size || 0} source types</strong>
+    </div>
+    <div>
+      <span>Source health</span>
+      <strong>${escapeHtml(liveText)}</strong>
+    </div>
+  `;
+}
+
 function renderEntities(docs) {
   const { entities, tickers } = extractEntities(docs);
   const tickerHtml = tickers
@@ -1416,6 +1559,8 @@ function render() {
   renderQuality(docs);
   renderSourceHealth();
   renderWatchlist(docs);
+  renderCoverageSummary(docs, evidence);
+  renderNarrativeShift(docs);
   renderBrief(docs, evidence);
   renderEvidence(evidence);
   $("lastUpdated").textContent = `Updated ${new Date().toLocaleTimeString()}`;
@@ -1438,6 +1583,8 @@ async function runSelectedEngine() {
   if (analysisMode === "brief") {
     renderBrief(docs, evidence);
     renderEvidence(evidence);
+    renderCoverageSummary(docs, evidence);
+    renderNarrativeShift(docs);
     askButton.disabled = false;
     askButton.textContent = "Pay $1 & generate";
     return;
@@ -1483,10 +1630,14 @@ async function runSelectedEngine() {
     }
     renderCitationAudit(evidence);
     renderEvidence(evidence);
+    renderCoverageSummary(docs, evidence);
+    renderNarrativeShift(docs);
     showStatus("Analysis complete.");
   } catch (error) {
     renderAnalystOutput(normalizeAnalystJson(createLocalAnalystJson(docs, evidence), analysisPlan, evidence, sourceConflicts));
     renderEvidence(evidence);
+    renderCoverageSummary(docs, evidence);
+    renderNarrativeShift(docs);
     $("briefOutput").insertAdjacentHTML(
       "afterbegin",
       `<p class="engine-warning"><strong>Connection was slow:</strong> ${escapeHtml(
@@ -1504,6 +1655,7 @@ async function runSelectedEngine() {
 async function loadSampleCorpus() {
   const response = await fetch("data/corpus.json");
   corpus = await response.json();
+  baselineCorpus = [...corpus];
   populateFilters();
   render();
 }
@@ -1520,6 +1672,7 @@ async function fetchLiveSources() {
     const payload = await response.json();
     const docs = payload.documents || [];
     latestLiveHealth = payload.health || [];
+    latestSourceStatus = latestLiveHealth.length ? "Live sources checked" : "Live source status unavailable";
     if (!docs.length) throw new Error("No documents returned");
     corpus = [...docs, ...corpus];
     populateFilters();
@@ -1536,13 +1689,14 @@ async function refreshLiveCorpusForQuestion(question) {
   if (query) url.searchParams.set("query", query);
   url.searchParams.set("limit", "8");
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 6500);
+  const timeout = window.setTimeout(() => controller.abort(), DATA_REFRESH_TIMEOUT_MS);
   try {
     const response = await fetch(url.toString(), { signal: controller.signal });
     if (!response.ok) throw new Error(`Data relay returned ${response.status}`);
     const payload = await response.json();
     const docs = payload.documents || [];
     latestLiveHealth = payload.health || [];
+    latestSourceStatus = latestLiveHealth.length ? "Live sources checked" : "Live source status unavailable";
     if (docs.length) {
       const seen = new Set(corpus.map((doc) => doc.id || doc.source_url || `${doc.title}-${doc.date}`));
       const freshDocs = docs.filter((doc) => {
@@ -1558,6 +1712,8 @@ async function refreshLiveCorpusForQuestion(question) {
     }
     showStatus(docs.length ? `Refreshed ${docs.length} public documents.` : "Using current public corpus.");
   } catch {
+    latestLiveHealth = [];
+    latestSourceStatus = "Live refresh unavailable";
     showStatus("Live source refresh unavailable; using current corpus.");
   } finally {
     window.clearTimeout(timeout);
