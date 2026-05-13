@@ -610,6 +610,17 @@ function sourceRole(sourceType = "") {
   return "other";
 }
 
+function sourceRoleLabel(role = "") {
+  return {
+    company: "Company",
+    regulator: "Regulators",
+    macro_research: "Macro/research",
+    policymaker: "Policy",
+    media: "News",
+    other: "Other",
+  }[role] || "Other";
+}
+
 function inferSourceProfile(doc = {}) {
   const source = `${doc.source_type || ""} ${doc.title || ""} ${doc.source_url || ""}`.toLowerCase();
   if (/video|caption|subtitle|youtube|vimeo|webvtt|srt/.test(source)) return "video_transcript";
@@ -1333,6 +1344,15 @@ function freshnessLabel(items) {
   return new Date(times[0]).toISOString().slice(0, 10);
 }
 
+function representativeSentence(text = "") {
+  return (
+    sentences(text).find((sentence) => {
+      const cleaned = sentence.replace(/\s+/g, " ").trim();
+      return cleaned.length >= 25 && !/^(mr|mrs|ms|dr|sen|rep|chairman|speaker)\.?$/i.test(cleaned);
+    }) || ""
+  );
+}
+
 function docKey(doc) {
   return doc.id || doc.source_url || `${doc.title || ""}-${doc.date || ""}`;
 }
@@ -1453,6 +1473,91 @@ function renderCoverageSummary(docs, evidence) {
   `;
 }
 
+function sourceGroupComparisons(docs, evidence) {
+  const groups = new Map();
+  docs.forEach((doc) => {
+    const role = sourceRole(doc.source_type);
+    if (!groups.has(role)) groups.set(role, { role, docs: [], evidence: [] });
+    groups.get(role).docs.push(doc);
+  });
+  evidence.forEach((item) => {
+    const role = sourceRole(item.doc.source_type);
+    if (!groups.has(role)) groups.set(role, { role, docs: [], evidence: [] });
+    groups.get(role).evidence.push(item);
+  });
+
+  return [...groups.values()]
+    .filter((group) => group.docs.length || group.evidence.length)
+    .map((group) => {
+      const groupDocs = group.docs.length ? group.docs : group.evidence.map((item) => item.doc);
+      const summary = summarizeCorpus(groupDocs);
+      const topTheme = summary.themeScores[0]?.[0] || "No clear theme";
+      const riskTone =
+        summary.risk > summary.positive * 1.2
+          ? "Risk-heavy"
+          : summary.positive > summary.risk * 1.2
+            ? "Constructive"
+            : "Mixed";
+      const sourceTypes = [...new Set(groupDocs.map((doc) => doc.source_type).filter(Boolean))].slice(0, 3);
+      const example = group.evidence[0];
+      const fallbackDoc =
+        freshestDocs(groupDocs).find((doc) => sentences(doc.text || "").length) ||
+        groupDocs.find((doc) => doc.text || doc.title) ||
+        {};
+      return {
+        role: group.role,
+        label: sourceRoleLabel(group.role),
+        docCount: groupDocs.length,
+        evidenceCount: group.evidence.length,
+        sourceTypes,
+        topTheme,
+        riskTone,
+        example,
+        exampleText: example?.sentence || representativeSentence(fallbackDoc.text || "") || fallbackDoc.title || "",
+      };
+    })
+    .sort((a, b) => b.evidenceCount - a.evidenceCount || b.docCount - a.docCount)
+    .slice(0, 4);
+}
+
+function renderSourceComparison(docs, evidence) {
+  if (!$("sourceComparison")) return;
+  const groups = sourceGroupComparisons(docs, evidence);
+  if (groups.length < 2) {
+    $("sourceComparison").innerHTML = `
+      <div class="source-comparison-head">
+        <span>Source groups</span>
+        <strong>Need more source variety</strong>
+        <small>Live sources or imports will make group differences visible.</small>
+      </div>
+    `;
+    return;
+  }
+
+  $("sourceComparison").innerHTML = `
+    <div class="source-comparison-head">
+      <span>Source groups</span>
+      <strong>${groups.length} views of the same market language</strong>
+      <small>Compare emphasis before trusting one summary.</small>
+    </div>
+    ${groups
+      .map((group) => {
+        const example = group.exampleText
+          ? `${group.exampleText.slice(0, 150)}${group.exampleText.length > 150 ? "..." : ""}`
+          : "Limited representative text for this source group.";
+        const docLabel = group.docCount === 1 ? "doc" : "docs";
+        return `<div class="source-group-card">
+          <span>${escapeHtml(group.label)}</span>
+          <strong>${escapeHtml(group.topTheme)}</strong>
+          <small>${group.docCount} ${docLabel} · ${escapeHtml(group.sourceTypes.join(", ") || "Unknown sources")}</small>
+          <div class="source-tone">${escapeHtml(group.riskTone)}</div>
+          <p>${escapeHtml(example)}</p>
+        </div>`;
+      })
+      .join("")}
+  `;
+}
+
 function renderEntities(docs) {
   const { entities, tickers } = extractEntities(docs);
   const tickerHtml = tickers
@@ -1561,6 +1666,7 @@ function render() {
   renderWatchlist(docs);
   renderCoverageSummary(docs, evidence);
   renderNarrativeShift(docs);
+  renderSourceComparison(docs, evidence);
   renderBrief(docs, evidence);
   renderEvidence(evidence);
   $("lastUpdated").textContent = `Updated ${new Date().toLocaleTimeString()}`;
@@ -1585,6 +1691,7 @@ async function runSelectedEngine() {
     renderEvidence(evidence);
     renderCoverageSummary(docs, evidence);
     renderNarrativeShift(docs);
+    renderSourceComparison(docs, evidence);
     askButton.disabled = false;
     askButton.textContent = "Pay $1 & generate";
     return;
@@ -1632,12 +1739,14 @@ async function runSelectedEngine() {
     renderEvidence(evidence);
     renderCoverageSummary(docs, evidence);
     renderNarrativeShift(docs);
+    renderSourceComparison(docs, evidence);
     showStatus("Analysis complete.");
   } catch (error) {
     renderAnalystOutput(normalizeAnalystJson(createLocalAnalystJson(docs, evidence), analysisPlan, evidence, sourceConflicts));
     renderEvidence(evidence);
     renderCoverageSummary(docs, evidence);
     renderNarrativeShift(docs);
+    renderSourceComparison(docs, evidence);
     $("briefOutput").insertAdjacentHTML(
       "afterbegin",
       `<p class="engine-warning"><strong>Connection was slow:</strong> ${escapeHtml(

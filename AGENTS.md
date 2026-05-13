@@ -31,7 +31,7 @@ Priority order:
 1. Make the daily brief reliable and easy to trust.
 2. Improve source coverage, freshness, and source-health visibility.
 3. Harden narrative-shift tracking against a prior corpus or baseline.
-4. Add source-group comparison views.
+4. Harden source-group comparison views.
 5. Add watchlists and exportable briefs.
 6. Only then expand into hosted accounts, payments, or cloud deployment.
 

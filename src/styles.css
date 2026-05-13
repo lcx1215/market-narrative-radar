@@ -730,6 +730,67 @@ h3 {
   white-space: nowrap;
 }
 
+.source-comparison {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1.1fr repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.source-comparison:empty {
+  display: none;
+}
+
+.source-comparison-head,
+.source-group-card {
+  background: rgba(7, 11, 18, 0.34);
+  display: grid;
+  gap: 7px;
+  min-height: 144px;
+  padding: 12px;
+}
+
+.source-group-card,
+.source-comparison-head + .source-group-card {
+  border-left: 1px solid var(--line);
+}
+
+.source-comparison span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.source-comparison strong {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.source-comparison small,
+.source-comparison p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.source-tone {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent-3);
+  font-size: 11px;
+  font-weight: 850;
+  justify-self: start;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
 .analyst-output {
   display: grid;
   gap: 12px;
@@ -1228,6 +1289,10 @@ footer {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .source-comparison {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .coverage-summary div:nth-child(odd) {
     border-left: 0;
   }
@@ -1236,11 +1301,19 @@ footer {
     border-left: 0;
   }
 
+  .source-comparison > div:nth-child(odd) {
+    border-left: 0;
+  }
+
   .coverage-summary div:nth-child(n + 3) {
     border-top: 1px solid var(--line);
   }
 
   .narrative-shift > div:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+
+  .source-comparison > div:nth-child(n + 3) {
     border-top: 1px solid var(--line);
   }
 
@@ -1311,6 +1384,10 @@ footer {
     grid-template-columns: 1fr;
   }
 
+  .source-comparison {
+    grid-template-columns: 1fr;
+  }
+
   .coverage-summary div,
   .coverage-summary div:nth-child(n) {
     border-left: 0;
@@ -1321,11 +1398,20 @@ footer {
     border-left: 0;
   }
 
+  .source-comparison > div,
+  .source-comparison > div:nth-child(n) {
+    border-left: 0;
+  }
+
   .coverage-summary div + div {
     border-top: 1px solid var(--line);
   }
 
   .narrative-shift > div + div {
+    border-top: 1px solid var(--line);
+  }
+
+  .source-comparison > div + div {
     border-top: 1px solid var(--line);
   }
 

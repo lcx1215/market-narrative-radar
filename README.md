@@ -41,6 +41,7 @@ The app keeps the main screen simple:
 - confidence and caveats,
 - coverage, freshness, and source-health status,
 - narrative shifts versus the starting corpus,
+- source-group comparison across company, regulator, policy, research, and news text,
 - evidence passages behind the answer,
 - source links where available.
 
@@ -129,7 +130,7 @@ The next product work should improve the app itself before cloud deployment:
 2. make every claim traceable to evidence,
 3. show data coverage and source health clearly,
 4. harden narrative-shift tracking versus a prior corpus,
-5. add source-group comparison,
+5. harden source-group comparison,
 6. add watchlists and exportable briefs.
 
 ## Project Map
