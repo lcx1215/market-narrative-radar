@@ -1431,7 +1431,7 @@ async function refreshLiveCorpusForQuestion(question) {
   if (query) url.searchParams.set("query", query);
   url.searchParams.set("limit", "8");
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 6500);
+  const timeout = window.setTimeout(() => controller.abort(), 20000);
   try {
     const response = await fetch(url.toString(), { signal: controller.signal });
     if (!response.ok) throw new Error(`Data relay returned ${response.status}`);

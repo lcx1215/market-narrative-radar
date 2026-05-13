@@ -180,9 +180,6 @@ def classify_question_intent(question: str) -> str:
 
 
 def analysis_plan(payload: dict) -> dict:
-    provided = payload.get("analysis_plan")
-    if isinstance(provided, dict) and provided:
-        return provided
     evidence = payload.get("evidence", [])
     source_conflicts = payload.get("source_conflicts") or []
     source_profiles = payload.get("source_profiles") or []
@@ -203,7 +200,7 @@ def analysis_plan(payload: dict) -> dict:
         limits.append("Source coverage is narrow; compare more source groups before making a stronger read.")
     if not source_conflicts:
         limits.append("No strong precomputed source conflict was found; treat disagreement language cautiously.")
-    return {
+    default_plan = {
         "intent": classify_question_intent(payload.get("question", "")),
         "focus_terms": sorted(set(focus_terms), key=focus_terms.index),
         "evidence_count": len(evidence),
@@ -228,6 +225,18 @@ def analysis_plan(payload: dict) -> dict:
         ],
         "answer_limits": limits,
     }
+    provided = payload.get("analysis_plan")
+    if isinstance(provided, dict) and provided:
+        merged = {**default_plan, **provided}
+        merged["source_count"] = int(merged.get("source_count") or len(merged.get("source_groups") or source_groups))
+        merged["evidence_count"] = int(merged.get("evidence_count") or len(evidence))
+        merged["source_profiles"] = merged.get("source_profiles") or default_plan["source_profiles"]
+        merged["themes"] = merged.get("themes") or default_plan["themes"]
+        merged["source_conflict_count"] = merged.get("source_conflict_count", default_plan["source_conflict_count"])
+        merged["steps"] = merged.get("steps") or default_plan["steps"]
+        merged["answer_limits"] = merged.get("answer_limits") or default_plan["answer_limits"]
+        return merged
+    return default_plan
 
 
 def normalize_analysis(raw: dict, payload: dict) -> dict:
