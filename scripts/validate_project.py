@@ -26,6 +26,7 @@ REQUIRED_FILES = [
     "docs/demo_guide.md",
     "docs/analyst_schema.md",
     "docs/course_methods_map.md",
+    "docs/source_processing.md",
     "report/project_report.md",
     "scripts/build_corpus.py",
     "scripts/fetch_live_sources.py",

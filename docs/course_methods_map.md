@@ -8,6 +8,7 @@ This project keeps the interface simple, but the app uses text-as-data methods f
 - **Named entities and information extraction**: the app extracts organizations, agencies, capitalized actors, and tickers for the entity radar.
 - **Dictionary scoring**: the app scores themes such as AI, rates, China trade, regulation, demand, and risk language.
 - **Sentence retrieval**: the app ranks evidence sentences by question overlap, theme match, and risk-language intensity.
+- **Source-specific preprocessing**: the app switches reading rules for filings, interviews, regulator text, policy speech, macro research, news, commentary, and video transcripts.
 - **Source comparison**: the app compares source groups such as company filings, regulators, policymakers, macro research, and media.
 - **Structured LLM analysis**: the backend asks MiniMax or another model to fill a fixed JSON schema using retrieved evidence only.
 
@@ -18,6 +19,7 @@ This project keeps the interface simple, but the app uses text-as-data methods f
 | Loading and inspecting a text corpus | HW01 | `data/corpus.json`, `data/live_corpus.json`, `scripts/build_corpus.py` |
 | Document length and word frequency | HW01 | token counts, lexical diversity, normalized theme scores |
 | Tokenization and preprocessing | HW02 | `tokenize`, `splitSentences`, transcript cleaning |
+| Text cleaning by document type | HW02 | `SOURCE_PROFILES`, source-aware cleaning and confidence rules |
 | Named entities and information extraction | HW02 | `extractEntities`, ticker extraction, source metadata |
 | Similarity and evidence ranking | HW03 | sentence retrieval by query overlap and theme score |
 | Topic/theme modeling idea | HW03, HW07 | interpretable theme dictionaries instead of a black-box topic model |

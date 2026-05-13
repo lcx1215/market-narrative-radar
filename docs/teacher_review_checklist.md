@@ -39,6 +39,7 @@ The project treats public documents as a corpus. It performs:
 - dictionary-based theme scoring,
 - risk-language scoring,
 - sentence-level evidence retrieval,
+- source-aware processing for different document types,
 - source conflict detection,
 - source comparison,
 - structured evidence-grounded interpretation,

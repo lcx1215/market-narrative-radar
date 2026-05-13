@@ -37,6 +37,7 @@ price targets, or portfolio instructions. Mention uncertainty and source gaps.""
 ANALYST_SCHEMA = {
     "question_intent": "",
     "analysis_plan": {},
+    "source_profiles": [],
     "executive_read": "",
     "explicit_claims": [],
     "implicit_signals": [],
@@ -79,7 +80,9 @@ Return valid JSON only. Use this exact schema:
 
 Each important claim should include an evidence_index when it is grounded in a
 retrieved passage. If the evidence is too thin, say so in missing_evidence and
-lower confidence. Treat source_conflicts as differences in institutional
+lower confidence. Apply source-specific reading rules from source_profiles:
+filings, transcripts, regulator text, news, research blogs, video transcripts,
+and congressional speech should not be interpreted the same way. Treat source_conflicts as differences in institutional
 framing across company, regulator, policymaker, macro research, and media
 sources; do not invent conflict if the evidence only supports weak tension."""
 
@@ -91,7 +94,8 @@ return forecasts, or portfolio instructions.
 Required schema:
 {json.dumps(ANALYST_SCHEMA, indent=2)}
 
-Keep the answer concise. Separate direct claims from interpretation. Treat
+Keep the answer concise. Separate direct claims from interpretation. Apply
+source-specific reading rules from source_profiles. Treat
 source_conflicts as framing gaps unless evidence proves a factual contradiction."""
 
 
@@ -129,6 +133,37 @@ def source_conflict_text(payload: dict) -> str:
     )
 
 
+def source_profile_text(payload: dict) -> str:
+    rows = payload.get("source_profiles") or []
+    if not rows:
+        profiles = []
+        for item in payload.get("evidence", []):
+            profile = item.get("source_profile")
+            if isinstance(profile, dict):
+                profiles.append({**profile, "source_type": item.get("source_type", "")})
+        rows = profiles
+    if not rows:
+        return "No source profiles supplied; use conservative generic text handling."
+    lines = []
+    seen = set()
+    for item in rows[:8]:
+        key = f"{item.get('profile_key', '')}:{item.get('source_type', '')}"
+        if key in seen:
+            continue
+        seen.add(key)
+        signals = item.get("signals_to_extract") or []
+        if isinstance(signals, list):
+            signals = ", ".join(str(signal) for signal in signals[:4])
+        lines.append(
+            f"- {item.get('source_type', item.get('label', 'source'))}: "
+            f"{item.get('profile_key', 'generic_text')} | "
+            f"cleaning: {item.get('cleaning_strategy', '')} | "
+            f"signals: {signals} | "
+            f"confidence_penalty: {item.get('confidence_penalty', '')}"
+        )
+    return "\n".join(lines)
+
+
 def classify_question_intent(question: str) -> str:
     lower = question.lower()
     if re.search(r"\b(contradict|contradiction|conflict|disagree|tension|mismatch)\b", lower):
@@ -150,6 +185,7 @@ def analysis_plan(payload: dict) -> dict:
         return provided
     evidence = payload.get("evidence", [])
     source_conflicts = payload.get("source_conflicts") or []
+    source_profiles = payload.get("source_profiles") or []
     source_groups = sorted({item.get("source_type", "") for item in evidence if item.get("source_type")})
     themes = sorted({item.get("theme", "") for item in evidence if item.get("theme")})
     focus_terms = [
@@ -173,6 +209,14 @@ def analysis_plan(payload: dict) -> dict:
         "evidence_count": len(evidence),
         "source_count": len(source_groups),
         "source_groups": source_groups,
+        "source_profiles": [
+            {
+                "profile_key": item.get("profile_key", "generic_text"),
+                "source_type": item.get("source_type", ""),
+                "confidence_penalty": item.get("confidence_penalty", "medium"),
+            }
+            for item in source_profiles[:8]
+        ],
         "themes": themes[:5],
         "source_conflict_count": len(source_conflicts),
         "steps": [
@@ -194,6 +238,7 @@ def normalize_analysis(raw: dict, payload: dict) -> dict:
     list_fields = [
         "explicit_claims",
         "implicit_signals",
+        "source_profiles",
         "source_conflicts",
         "source_tensions",
         "contradictions",
@@ -225,6 +270,12 @@ def normalize_analysis(raw: dict, payload: dict) -> dict:
             analysis[field] = [value]
     if not analysis["source_conflicts"]:
         analysis["source_conflicts"] = source_conflicts
+    if not analysis["source_profiles"]:
+        analysis["source_profiles"] = payload.get("source_profiles") or [
+            item.get("source_profile")
+            for item in evidence
+            if isinstance(item.get("source_profile"), dict)
+        ]
     if not analysis.get("executive_read"):
         analysis["executive_read"] = "The answer is limited to retrieved public text evidence and should be treated as a narrative read, not a forecast."
     if not isinstance(analysis.get("confidence"), dict):
@@ -292,6 +343,7 @@ def analysis_user_content(payload: dict) -> str:
         f"Question: {payload.get('question', '')}\n\n"
         f"Fixed analysis contract:\n{json.dumps(contract, indent=2)}\n\n"
         f"Analysis route selected by app:\n{json.dumps(analysis_plan(payload), indent=2)}\n\n"
+        f"Source-specific reading rules:\n{source_profile_text(payload)}\n\n"
         f"Precomputed source conflict signals:\n{source_conflict_text(payload)}\n\n"
         f"Evidence:\n{evidence_text(payload)}"
     )
@@ -300,6 +352,7 @@ def analysis_user_content(payload: dict) -> str:
 def local_analyst(payload: dict) -> dict:
     evidence = payload.get("evidence", [])
     source_conflicts = payload.get("source_conflicts") or []
+    source_profiles = payload.get("source_profiles") or []
     plan = analysis_plan(payload)
     themes = {}
     source_types = {}
@@ -342,6 +395,7 @@ def local_analyst(payload: dict) -> dict:
                 "evidence_index": risk_rows[0]["evidence_index"] if risk_rows else None,
             }
         ],
+        "source_profiles": source_profiles,
         "source_tensions": [
             {
                 "tension": "Compare company filing language with regulator or policymaker language before treating the narrative as one-sided.",

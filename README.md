@@ -17,6 +17,7 @@ It is not a trading system. It does not forecast returns, produce price targets,
 - Retrieves evidence passages for the daily market/policy narrative focus.
 - Classifies the daily brief into a bounded text-analysis intent before calling the model.
 - Builds an analysis route with focus terms, source coverage, evidence count, and answer limits.
+- Applies source-specific reading rules for filings, interviews, regulator text, policy speech, research posts, news, commentary, and video transcripts.
 - Supports structured analyst mode for explicit claims, implicit signals, contradictions, narrative shifts, source tensions, risk flags, hedging language, missing evidence, and watch items.
 - Detects source conflicts where companies, executives, regulators, policymakers, macro research, and media frame the same theme differently.
 - Normalizes LLM output back into the fixed analyst JSON schema if a provider omits fields.
@@ -85,9 +86,10 @@ The app is not a free-form chatbot. It teaches whichever model is connected to f
 3. Build an analysis route with evidence and source guardrails.
 4. Refresh public sources.
 5. Retrieve evidence.
-6. Detect source conflicts.
-7. Fill and validate the fixed analyst JSON schema.
-8. Render a concise memo and keep evidence auditable.
+6. Attach source-specific processing rules.
+7. Detect source conflicts.
+8. Fill and validate the fixed analyst JSON schema.
+9. Render a concise memo and keep evidence auditable.
 
 See `docs/analysis_contract.md` for the full contract.
 
@@ -161,6 +163,7 @@ python3 scripts/validate_project.py
 - `docs/teacher_review_checklist.md`: short grading/demo checklist.
 - `docs/course_methods_map.md`: mapping from course NLP methods to app features.
 - `docs/analysis_contract.md`: fixed RAG/tool/DAG reasoning contract.
+- `docs/source_processing.md`: source-aware cleaning and interpretation rules.
 - `docs/replication_package.md`: replication instructions.
 - `docs/data_dictionary.md`: data schema.
 - `docs/engines.md`: data and LLM engine documentation.

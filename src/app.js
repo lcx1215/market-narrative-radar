@@ -91,6 +91,63 @@ const POSITIVE_WORDS = [
   "investment",
 ];
 
+const SOURCE_PROFILES = {
+  company_filing: {
+    label: "Company filing",
+    cleaning_strategy: "Keep business, risk-factor, MD&A, and filing-summary language; discount boilerplate.",
+    signals_to_extract: ["risk factors", "demand language", "margin pressure", "forward-looking hedges"],
+    confidence_penalty: "low",
+  },
+  executive_interview: {
+    label: "Executive interview or transcript",
+    cleaning_strategy: "Preserve speaker turns when available; separate management answers from interviewer questions.",
+    signals_to_extract: ["hedging language", "guidance shifts", "demand commentary", "timeline changes"],
+    confidence_penalty: "medium_if_no_speaker_metadata",
+  },
+  regulator_text: {
+    label: "Regulator or agency text",
+    cleaning_strategy: "Keep rule, notice, enforcement, compliance, and agency-action language.",
+    signals_to_extract: ["proposed rules", "enforcement pressure", "compliance cost", "legal uncertainty"],
+    confidence_penalty: "low",
+  },
+  policymaker_speech: {
+    label: "Policymaker or congressional speech",
+    cleaning_strategy: "Preserve speaker, party, institution, and policy-topic language; discount procedural boilerplate.",
+    signals_to_extract: ["policy salience", "ideological framing", "constituency pressure", "agenda setting"],
+    confidence_penalty: "medium",
+  },
+  macro_research: {
+    label: "Macro research or central bank text",
+    cleaning_strategy: "Keep causal claims, uncertainty wording, data-dependence, and macro risk channels.",
+    signals_to_extract: ["inflation risk", "labor uncertainty", "credit stress", "data dependence"],
+    confidence_penalty: "low",
+  },
+  news_report: {
+    label: "News report",
+    cleaning_strategy: "Keep attributed claims and publication metadata; treat unattributed summaries as secondary evidence.",
+    signals_to_extract: ["named actors", "quoted claims", "reported catalysts", "secondhand framing"],
+    confidence_penalty: "medium",
+  },
+  blog_or_commentary: {
+    label: "Blog or commentary",
+    cleaning_strategy: "Keep author/institution context and argument structure; separate evidence from opinion.",
+    signals_to_extract: ["research framing", "assumptions", "causal narrative", "source caveats"],
+    confidence_penalty: "medium",
+  },
+  video_transcript: {
+    label: "Video transcript",
+    cleaning_strategy: "Remove timestamps and caption artifacts; preserve speaker turns if available.",
+    signals_to_extract: ["speaker stance", "emphasis shifts", "hedging", "question-answer structure"],
+    confidence_penalty: "high_if_auto_caption_only",
+  },
+  generic_text: {
+    label: "Generic public text",
+    cleaning_strategy: "Use conservative text cleaning and require stronger evidence before interpretation.",
+    signals_to_extract: ["named actors", "risk words", "theme terms", "missing source context"],
+    confidence_penalty: "medium",
+  },
+};
+
 const DATA_SOURCE_ENGINES = [
   {
     name: "SEC EDGAR",
@@ -180,6 +237,7 @@ const ANALYSIS_CONTRACT = {
   required_fields: [
     "question_intent",
     "analysis_plan",
+    "source_profiles",
     "executive_read",
     "explicit_claims",
     "implicit_signals",
@@ -197,6 +255,7 @@ const ANALYSIS_CONTRACT = {
     "Tie implications to source text.",
     "Separate direct claims from interpretation.",
     "Classify the user question before interpreting evidence.",
+    "Apply source-specific reading rules before drawing implications.",
     "Lower confidence when evidence is thin or source coverage is narrow.",
     "Do not provide trading recommendations, price targets, or portfolio instructions.",
   ],
@@ -494,6 +553,51 @@ function sourceRole(sourceType = "") {
   return "other";
 }
 
+function inferSourceProfile(doc = {}) {
+  const source = `${doc.source_type || ""} ${doc.title || ""} ${doc.source_url || ""}`.toLowerCase();
+  if (/video|caption|subtitle|youtube|vimeo|webvtt|srt/.test(source)) return "video_transcript";
+  if (/executive|interview|transcript|earnings|call|ceo|cfo/.test(source)) return "executive_interview";
+  if (/company|filing|10-k|10-q|8-k|sec filing|annual report/.test(source)) return "company_filing";
+  if (/regulator|federal register|ftc|doj|cftc|sec|agency|rule|notice|enforcement/.test(source)) return "regulator_text";
+  if (/congress|senate|house|committee|representative|senator/.test(source)) return "policymaker_speech";
+  if (/federal reserve|fed|research blog|ny fed|liberty street|fred|macro/.test(source)) return "macro_research";
+  if (/news|media|gdelt|reuters|bloomberg|wsj|financial times|nyt/.test(source)) return "news_report";
+  if (/blog|commentary|opinion|substack|research/.test(source)) return "blog_or_commentary";
+  return "generic_text";
+}
+
+function sourceProfileForDoc(doc = {}) {
+  const profileKey = inferSourceProfile(doc);
+  const profile = SOURCE_PROFILES[profileKey] || SOURCE_PROFILES.generic_text;
+  return {
+    profile_key: profileKey,
+    label: profile.label,
+    cleaning_strategy: profile.cleaning_strategy,
+    signals_to_extract: profile.signals_to_extract,
+    confidence_penalty: profile.confidence_penalty,
+  };
+}
+
+function sourceProfilesForEvidence(evidence) {
+  const seen = new Map();
+  evidence.forEach(({ doc }) => {
+    const profile = sourceProfileForDoc(doc);
+    const key = `${profile.profile_key}:${doc.source_type || "Unknown"}`;
+    if (!seen.has(key)) {
+      seen.set(key, {
+        ...profile,
+        source_type: doc.source_type || "Unknown",
+        examples: [],
+        count: 0,
+      });
+    }
+    const row = seen.get(key);
+    row.count += 1;
+    if (row.examples.length < 2) row.examples.push(doc.title || "Untitled");
+  });
+  return [...seen.values()].slice(0, 8);
+}
+
 function stanceProfile(text = "") {
   const lower = text.toLowerCase();
   const countAny = (terms) => terms.reduce((sum, term) => sum + (lower.includes(term) ? 1 : 0), 0);
@@ -680,6 +784,7 @@ function keyQuestionTerms(question = "") {
 
 function buildAnalysisPlan(question, evidence, sourceConflicts) {
   const sourceTypes = [...new Set(evidence.map((item) => item.doc.source_type).filter(Boolean))];
+  const sourceProfiles = sourceProfilesForEvidence(evidence);
   const themes = [...new Set(evidence.map((item) => item.theme).filter(Boolean))];
   const focusTerms = keyQuestionTerms(question);
   const evidenceCount = evidence.length;
@@ -705,6 +810,11 @@ function buildAnalysisPlan(question, evidence, sourceConflicts) {
     evidence_count: evidenceCount,
     source_count: sourceCount,
     source_groups: sourceTypes,
+    source_profiles: sourceProfiles.map((profile) => ({
+      profile_key: profile.profile_key,
+      source_type: profile.source_type,
+      confidence_penalty: profile.confidence_penalty,
+    })),
     themes: themes.slice(0, 5),
     source_conflict_count: conflictCount,
     steps,
@@ -747,6 +857,7 @@ function normalizeAnalystJson(analysis, plan, evidence, sourceConflicts) {
     normalized[field] = normalizeList(normalized[field]);
   });
   if (!normalized.source_conflicts.length) normalized.source_conflicts = sourceConflicts;
+  if (!normalized.source_profiles.length) normalized.source_profiles = sourceProfilesForEvidence(evidence);
   if (!normalized.executive_read) {
     normalized.executive_read = "The answer is limited to retrieved public text evidence and should be treated as a narrative read, not a forecast.";
   }
@@ -816,6 +927,7 @@ function renderBrief(docs, evidence) {
 function createLocalAnalystJson(docs, evidence) {
   const summary = summarizeCorpus(docs);
   const sourceConflicts = detectSourceConflicts(evidence);
+  const sourceProfiles = sourceProfilesForEvidence(evidence);
   const plan = buildAnalysisPlan($("questionBox").value, evidence, sourceConflicts);
   const sourceCounts = new Map();
   const themeCounts = new Map();
@@ -874,6 +986,7 @@ function createLocalAnalystJson(docs, evidence) {
         evidence_index: evidence.length > 1 ? 2 : null,
       },
     ],
+    source_profiles: sourceProfiles,
     source_tensions: [
       {
         tension: "Company, policymaker, regulator, and media sources can describe the same topic with different incentives and legal constraints.",
@@ -1215,6 +1328,7 @@ async function runSelectedEngine() {
   const docs = filteredCorpus();
   const evidence = retrieveEvidence(docs, question);
   const sourceConflicts = detectSourceConflicts(evidence);
+  const sourceProfiles = sourceProfilesForEvidence(evidence);
   const analysisPlan = buildAnalysisPlan(question, evidence, sourceConflicts);
   if (analysisMode === "brief") {
     renderBrief(docs, evidence);
@@ -1242,11 +1356,13 @@ async function runSelectedEngine() {
         question,
         themes: THEMES,
         source_conflicts: sourceConflicts,
+        source_profiles: sourceProfiles,
         evidence: evidence.slice(0, 12).map(({ doc, theme, sentence }) => ({
           source_type: doc.source_type,
           date: doc.date,
           title: doc.title,
           source_url: doc.source_url,
+          source_profile: sourceProfileForDoc(doc),
           theme,
           sentence,
         })),

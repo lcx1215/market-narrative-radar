@@ -36,6 +36,8 @@ The app uses an interpretable NLP pipeline. Documents are tokenized and scored w
 
 The app also computes a simple risk/constructive tone measure, extracts lightweight entities and tickers, reports corpus diagnostics, and ranks evidence passages. Corpus diagnostics include token volume, source diversity, lexical diversity, readability, and newest document date. The retrieval layer ranks sentences using query overlap, theme match, and risk-language intensity, while also favoring source diversity so that results do not come from only one document class.
 
+The current build also adds source-aware processing. Filings, executive interviews, regulator text, policy speech, macro research posts, news, commentary, and video transcripts are assigned different source profiles before model interpretation. These profiles define cleaning strategy, signal extraction targets, and confidence penalties. This matters because a prepared 10-K risk factor, an unscripted executive interview, a regulator notice, and a news summary should not carry the same evidentiary meaning.
+
 The brief is evidence-grounded. Every generated summary is paired with an evidence table and a citation audit that counts passages, documents, source types, and source references. This makes the app more transparent than a black-box summary.
 
 ## App Design
@@ -57,6 +59,8 @@ The app also includes a defensive answer pattern for open-ended or unusual user 
 The P1 build adds a source conflict detector. Before the LLM layer runs, the app compares evidence by source role: company or executive text, regulator text, policymaker text, macro research text, and media text. A conflict signal is created when the same theme is framed differently across these roles, for example when a company-facing source emphasizes growth or opportunity while a public authority source emphasizes risk, enforcement, compliance, or uncertainty. The detector does not claim that one side is correct. It marks the framing gap as something the analyst memo should discuss and verify.
 
 The connected model is therefore not asked to think from scratch. It receives a fixed analysis contract, retrieved evidence, precomputed conflict candidates, and strict output fields. This makes the model replaceable: MiniMax, OpenAI-compatible APIs, Anthropic, Ollama, or local fallback can all fill the same structured contract.
+
+The same contract now includes source profiles. The model can participate in source-aware interpretation, but source classification, evidence retrieval, conflict candidates, citations, confidence defaults, and JSON validation are controlled by the app rather than left to an open-ended chat response.
 
 The P2/P3 build keeps the scope narrow and strengthens that contract. Open-ended questions are first classified into a bounded intent such as policy/regulatory read, macro narrative read, company language read, sector theme read, or source conflict check. The app then builds an analysis plan with focus terms, evidence count, source groups, themes, route steps, and answer limits. Both the browser and backend relay normalize model output back into the fixed JSON schema. If a model omits fields, returns weak confidence metadata, or fails to include citations, the app fills the missing structure conservatively and lowers the practical strength of the answer.
 

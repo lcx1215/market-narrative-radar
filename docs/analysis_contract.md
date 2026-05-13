@@ -10,6 +10,7 @@ user question
   -> build fixed analysis route
   -> refresh public sources
   -> retrieve evidence passages
+  -> attach source-specific processing rules
   -> score source conflicts
   -> call analysis engine
   -> validate structured JSON shape
@@ -22,6 +23,7 @@ user question
 - Classify the user question before interpreting evidence.
 - Keep the answer inside the selected analysis route.
 - Tie every implication to source text.
+- Apply source-specific reading rules before drawing implications.
 - Separate direct claims from interpretation.
 - Compare source incentives across company, regulator, policymaker, macro research, and media text.
 - Lower confidence when evidence is thin or source coverage is narrow.
@@ -41,6 +43,12 @@ The app precomputes source conflict candidates before the LLM call. It compares 
 The detector looks for same-theme evidence where one source group emphasizes growth, demand, or opportunity while another emphasizes risk, regulation, enforcement, costs, or uncertainty. To avoid noisy matches, a candidate must share a named anchor, share at least two non-generic terms, and show opposed framing.
 
 The LLM receives these conflict candidates as structured context. It can accept, weaken, or reject them, but it should treat them as framing gaps, not proven factual contradictions.
+
+## Source-Aware Processing
+
+The app does not read every document type the same way. Before interpretation, each evidence item receives a `source_profile` such as `company_filing`, `executive_interview`, `regulator_text`, `policymaker_speech`, `macro_research`, `news_report`, `blog_or_commentary`, or `video_transcript`.
+
+Those profiles tell the analysis engine what to emphasize: filings need risk-factor and obligation language, interviews need hedges and unscripted claims, regulator text needs legal authority and compliance scope, policy speech needs constituency and committee framing, research posts need assumptions and uncertainty, news needs attribution quality, commentary needs viewpoint bias, and transcripts need speaker turns and verbal hedges. See `docs/source_processing.md`.
 
 ## Open-Ended Questions
 

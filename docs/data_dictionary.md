@@ -16,3 +16,13 @@ Each document in `data/corpus.json` is a JSON object with the following fields.
 | `text` | string | Raw text analyzed by the app. |
 
 For imported CSV files, the app accepts the same field names. If a column is missing, the app fills a conservative default.
+
+## Derived Analysis Fields
+
+The app keeps the stored corpus schema small. During analysis, it derives extra fields without writing them back into `data/corpus.json`:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `source_profile` | object | Source-aware processing profile inferred from `source_type`, `title`, and `source_url`. |
+| `source_profiles` | array | Unique profiles used by the current evidence set and passed to the analysis engine. |
+| `source_role` | string | Broad role used for source conflict detection, such as `company`, `regulator`, `policymaker`, `macro_research`, or `media`. |
