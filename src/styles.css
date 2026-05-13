@@ -182,6 +182,30 @@ main {
   gap: 12px;
 }
 
+.daily-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.daily-focus span {
+  background: rgba(32, 214, 255, 0.1);
+  border: 1px solid rgba(32, 214, 255, 0.28);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 850;
+  padding: 7px 10px;
+  text-transform: uppercase;
+}
+
+.paid-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .ask-row {
   align-items: center;
   display: flex;

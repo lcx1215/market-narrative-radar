@@ -13,62 +13,35 @@
         <p class="product-label">Public Text Intelligence</p>
         <h1>Market Narrative Radar</h1>
         <p class="lede">
-          Ask a market or policy question. The app retrieves public text,
-          compares source language, and returns an evidence-grounded read.
+          Generate a daily read of public market and policy text. The app refreshes sources,
+          compares institutional language, and returns an evidence-grounded narrative brief.
         </p>
       </div>
     </header>
 
     <main>
-      <section class="panel query-panel" aria-label="Narrative question">
+      <section class="panel query-panel" aria-label="Daily market narrative brief">
         <div>
-          <h2>Ask one market question</h2>
-          <p>Public sources, retrieval, and model routing are handled in the background.</p>
+          <h2>Daily narrative brief</h2>
+          <p>One click refreshes public sources, retrieves evidence, and runs the fixed analyst JSON contract.</p>
         </div>
         <div class="ask-box">
-          <textarea id="questionBox" rows="4">What changed in the AI, rates, and regulation narrative?</textarea>
+          <textarea id="questionBox" class="utility-dock" rows="4">What changed today across AI, rates, regulation, China trade, demand, margins, and risk language?</textarea>
+          <div class="daily-focus" aria-label="Daily focus areas">
+            <span>AI</span>
+            <span>Rates</span>
+            <span>Regulation</span>
+            <span>China trade</span>
+            <span>Demand</span>
+            <span>Risk language</span>
+          </div>
+          <p class="paid-note">Hosted version concept: $1 per daily brief. This local build does not charge or expose keys.</p>
           <div class="ask-row">
-            <span id="analysisStatus">Ready to analyze public text.</span>
-            <button id="askButton" class="primary">Analyze</button>
+            <span id="analysisStatus">Ready to generate today's public-text brief.</span>
+            <button id="askButton" class="primary">Generate brief</button>
           </div>
         </div>
       </section>
-
-      <details class="panel model-sandbox">
-        <summary>
-          <div>
-            <h2>Model sandbox</h2>
-            <p>Optional demo for testing another LLM without changing the app's analysis contract.</p>
-          </div>
-        </summary>
-        <div class="sandbox-grid">
-          <label>
-            Provider
-            <select id="overrideEngine">
-              <option value="auto">Default backend auto</option>
-              <option value="minimax-compatible">MiniMax compatible</option>
-              <option value="openai-compatible">OpenAI compatible</option>
-              <option value="anthropic-compatible">Anthropic compatible</option>
-            </select>
-          </label>
-          <label>
-            Model
-            <input id="overrideModel" placeholder="MiniMax-M2.7 or gpt-4.1-mini" />
-          </label>
-          <label>
-            Base URL
-            <input id="overrideBaseUrl" placeholder="https://api.minimax.io/v1" />
-          </label>
-          <label>
-            Session API key
-            <input id="overrideApiKey" type="password" autocomplete="off" placeholder="Used once, not saved" />
-          </label>
-        </div>
-        <p class="sandbox-note">
-          The visible workflow stays the same. RAG, source conflict checks, and the required JSON answer format remain fixed by the app.
-          A paid-question flow can be added later by putting checkout in front of this relay.
-        </p>
-      </details>
 
       <section class="dashboard-grid utility-dock">
         <article class="panel stat-panel">
@@ -162,7 +135,7 @@
           <div class="panel-heading">
             <div>
               <h2>Analyst Answer</h2>
-              <p>Generated from retrieved source text; no trading recommendation is produced.</p>
+              <p>Daily interpretation from retrieved source text; no trading recommendation is produced.</p>
             </div>
             <button id="copyBrief" class="secondary">Copy brief</button>
           </div>

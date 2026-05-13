@@ -42,13 +42,13 @@ The brief is evidence-grounded. Every generated summary is paired with an eviden
 
 The browser interface is deliberately simple. The visible workflow is:
 
-1. The user asks one market or policy text question.
+1. The user generates one daily market and policy narrative brief.
 2. The app refreshes public sources in the background when the data relay is running.
 3. The retrieval layer selects relevant evidence passages from the combined corpus.
 4. The analyst layer returns a memo with direct claims, implied signals, source tensions, risk flags, missing evidence, watch items, and confidence.
 5. The evidence drawer lets the user inspect source passages only when needed.
 
-More technical controls such as import, export, filter state, source diagnostics, and source health are kept in the code path, but they are not exposed as the main user experience. This makes the project work like a product rather than a dashboard of course components.
+More technical controls such as import, export, filter state, source diagnostics, source health, and custom question mode are kept in the code path, but they are not exposed as the main user experience. This makes the project work like a narrow product rather than a dashboard of course components.
 
 The LLM layer is optional and replaceable. The static app runs with local transparent NLP. A backend relay can connect OpenAI-compatible models, MiniMax, Anthropic, or Ollama without exposing API keys in browser code. This design supports model comparison while keeping the analysis reproducible and auditable.
 
@@ -59,6 +59,8 @@ The P1 build adds a source conflict detector. Before the LLM layer runs, the app
 The connected model is therefore not asked to think from scratch. It receives a fixed analysis contract, retrieved evidence, precomputed conflict candidates, and strict output fields. This makes the model replaceable: MiniMax, OpenAI-compatible APIs, Anthropic, Ollama, or local fallback can all fill the same structured contract.
 
 The P2/P3 build keeps the scope narrow and strengthens that contract. Open-ended questions are first classified into a bounded intent such as policy/regulatory read, macro narrative read, company language read, sector theme read, or source conflict check. The app then builds an analysis plan with focus terms, evidence count, source groups, themes, route steps, and answer limits. Both the browser and backend relay normalize model output back into the fixed JSON schema. If a model omits fields, returns weak confidence metadata, or fails to include citations, the app fills the missing structure conservatively and lowers the practical strength of the answer.
+
+The final product framing is a daily brief rather than an open-ended chat interface. A future hosted version could put a lightweight checkout in front of each generated daily brief, while preserving the same public-source retrieval and fixed JSON analysis contract. Open-ended custom questions are better treated as a later personal research feature.
 
 ## Findings From the Current Build
 

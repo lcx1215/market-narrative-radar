@@ -6,7 +6,7 @@ It is not a trading system. It does not forecast returns, produce price targets,
 
 ## What It Does
 
-- Gives the user one main action: ask a market or policy text question and click `Analyze`.
+- Gives the user one main action: generate a daily public-text narrative brief.
 - Ships with a reproducible demo corpus so the app works immediately.
 - Refreshes live public sources through a backend data relay during analysis.
 - Normalizes all documents into one schema.
@@ -14,8 +14,8 @@ It is not a trading system. It does not forecast returns, produce price targets,
 - Tracks watchlist terms and flags source/risk concentration.
 - Extracts lightweight entities and tickers from the filtered corpus.
 - Reports token volume, lexical diversity, readability, source diversity, and freshness.
-- Retrieves evidence passages for a user question.
-- Classifies open-ended questions into a bounded text-analysis intent before calling the model.
+- Retrieves evidence passages for the daily market/policy narrative focus.
+- Classifies the daily brief into a bounded text-analysis intent before calling the model.
 - Builds an analysis route with focus terms, source coverage, evidence count, and answer limits.
 - Supports structured analyst mode for explicit claims, implicit signals, contradictions, narrative shifts, source tensions, risk flags, hedging language, missing evidence, and watch items.
 - Detects source conflicts where companies, executives, regulators, policymakers, macro research, and media frame the same theme differently.
@@ -40,13 +40,7 @@ Open:
 http://localhost:8765
 ```
 
-Ask:
-
-```text
-What changed in the AI, rates, and regulation narrative?
-```
-
-Click `Analyze`. The app refreshes public sources in the background, retrieves evidence passages, and produces an analyst memo with confidence, direct claims, implied signals, source tensions, risk flags, missing evidence, and watch items.
+Click `Generate brief`. The app refreshes public sources in the background, retrieves evidence passages, and produces an analyst memo with confidence, direct claims, implied signals, source tensions, risk flags, missing evidence, and watch items.
 
 ## Live Public Sources
 
@@ -78,14 +72,16 @@ The relay uses an `auto` engine:
 
 This means the project can be opened publicly on GitHub without exposing private keys, and the model provider can be replaced later without rewriting the app.
 
-There is also a closed-by-default model sandbox for open-source users who want to test their own provider key. It is a demo path: the key is used for the current request and is not stored. A future paid-question version can put checkout in front of the same relay while keeping the analysis contract unchanged.
+There is also a closed-by-default model sandbox for open-source users who want to test their own provider key. It is a demo path: the key is used for the current request and is not stored. A future custom-question version can put checkout in front of the same relay while keeping the analysis contract unchanged.
+
+The current product shape is a daily brief. A hosted version could charge per generated daily brief, for example a simple `$1` demo unit, but payment is intentionally not implemented in this local course build.
 
 ## Analysis Contract
 
 The app is not a free-form chatbot. It teaches whichever model is connected to follow the same process:
 
-1. Parse the question.
-2. Classify the question into a bounded text-analysis intent.
+1. Set the daily narrative focus.
+2. Classify the brief into a bounded text-analysis intent.
 3. Build an analysis route with evidence and source guardrails.
 4. Refresh public sources.
 5. Retrieve evidence.

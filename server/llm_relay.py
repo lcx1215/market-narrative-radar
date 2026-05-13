@@ -56,6 +56,15 @@ ANALYST_SCHEMA = {
     "evidence_citations": [],
 }
 
+ALLOWED_INTENTS = {
+    "source_conflict_check",
+    "policy_and_regulatory_read",
+    "macro_narrative_read",
+    "company_language_read",
+    "sector_theme_read",
+    "broad_market_narrative_scan",
+}
+
 ANALYST_PROMPT = f"""You are a public financial and policy text analyst.
 Use only the retrieved evidence. Do not provide trading advice, price targets,
 return forecasts, portfolio instructions, or unsupported claims.
@@ -73,6 +82,17 @@ retrieved passage. If the evidence is too thin, say so in missing_evidence and
 lower confidence. Treat source_conflicts as differences in institutional
 framing across company, regulator, policymaker, macro research, and media
 sources; do not invent conflict if the evidence only supports weak tension."""
+
+MINIMAX_ANALYST_PROMPT = f"""You are a public financial and policy text analyst.
+Return compact valid JSON only. Do not use markdown.
+Use only retrieved evidence. Do not provide trading advice, price targets,
+return forecasts, or portfolio instructions.
+
+Required schema:
+{json.dumps(ANALYST_SCHEMA, indent=2)}
+
+Keep the answer concise. Separate direct claims from interpretation. Treat
+source_conflicts as framing gaps unless evidence proves a factual contradiction."""
 
 
 def post_json(url: str, payload: dict, headers: dict | None = None) -> dict:
@@ -135,7 +155,7 @@ def analysis_plan(payload: dict) -> dict:
     focus_terms = [
         token
         for token in re.findall(r"[a-z0-9$-]{3,}", payload.get("question", "").lower())
-        if token not in {"what", "the", "and", "for", "are", "was", "which", "where", "when", "does", "from", "into", "about", "changed", "change", "market", "narrative", "analysis", "analyze", "public", "source", "sources"}
+        if token not in {"what", "the", "and", "for", "are", "was", "which", "where", "when", "does", "from", "into", "about", "changed", "change", "market", "narrative", "today", "daily", "across", "analysis", "analyze", "public", "source", "sources"}
     ][:8]
     limits = [
         "No trading recommendation, price target, return forecast, or portfolio instruction.",
@@ -188,7 +208,9 @@ def normalize_analysis(raw: dict, payload: dict) -> dict:
         "market_relevance",
         "evidence_citations",
     ]
-    analysis["question_intent"] = analysis.get("question_intent") or plan["intent"]
+    analysis["question_intent"] = (
+        analysis["question_intent"] if analysis.get("question_intent") in ALLOWED_INTENTS else plan["intent"]
+    )
     if isinstance(analysis.get("analysis_plan"), dict):
         analysis["analysis_plan"] = {**plan, **analysis["analysis_plan"]}
     else:
@@ -235,10 +257,33 @@ def parse_json_object(text: str) -> dict:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if not match:
-            raise
-        return json.loads(match.group(0))
+        decoder = json.JSONDecoder()
+        candidates = []
+        for match in re.finditer(r"\{", text):
+            try:
+                value, _ = decoder.raw_decode(text[match.start():])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict):
+                candidates.append(value)
+        for value in candidates:
+            if any(key in value for key in ("executive_read", "confidence", "explicit_claims")):
+                return value
+        if candidates:
+            return candidates[-1]
+        raise
+
+
+def normalized_provider_analysis(text: str, payload: dict) -> dict:
+    try:
+        return normalize_analysis(parse_json_object(text), payload)
+    except Exception:
+        analysis = normalize_analysis(local_analyst(payload), payload)
+        analysis["missing_evidence"].append(
+            "The remote model returned a response that could not be parsed as the required JSON schema, so the relay used the local structured fallback."
+        )
+        analysis["confidence"]["level"] = "low"
+        return analysis
 
 
 def analysis_user_content(payload: dict) -> str:
@@ -389,23 +434,39 @@ def openai_compatible(payload: dict) -> str:
 def minimax_compatible(payload: dict) -> str:
     api_key = os.environ["MINIMAX_API_KEY"]
     base_url = os.environ.get("MINIMAX_BASE_URL", "https://api.minimax.io/v1")
-    model = os.environ.get("MINIMAX_MODEL", "MiniMax-M2.1")
+    primary_model = os.environ.get("MINIMAX_MODEL", "MiniMax-M2.1")
+    fallback_models = [
+        model.strip()
+        for model in os.environ.get("MINIMAX_FALLBACK_MODELS", "MiniMax-M2.1,MiniMax-M2").split(",")
+        if model.strip()
+    ]
+    models = list(dict.fromkeys([primary_model, *fallback_models]))
     max_tokens = int(os.environ.get("MINIMAX_MAX_TOKENS", "1400"))
-    result = post_json(
-        f"{base_url.rstrip('/')}/chat/completions",
-        {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": ANALYST_PROMPT if payload.get("analysis_mode") == "analyst" else SYSTEM_PROMPT},
-                {"role": "user", "content": analysis_user_content(payload)},
-            ],
-            "temperature": 0.2,
-            "max_tokens": max_tokens,
-            "response_format": {"type": "json_object"},
-        },
-        {"Authorization": f"Bearer {api_key}"},
-    )
-    return result["choices"][0]["message"]["content"]
+    last_error: Exception | None = None
+    for model in models:
+        try:
+            result = post_json(
+                f"{base_url.rstrip('/')}/chat/completions",
+                {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": MINIMAX_ANALYST_PROMPT if payload.get("analysis_mode") == "analyst" else SYSTEM_PROMPT,
+                        },
+                        {"role": "user", "content": analysis_user_content(payload)},
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": max_tokens,
+                    "response_format": {"type": "json_object"},
+                },
+                {"Authorization": f"Bearer {api_key}"},
+            )
+            return result["choices"][0]["message"]["content"]
+        except Exception as exc:
+            last_error = exc
+            continue
+    raise last_error or RuntimeError("MiniMax provider failed")
 
 
 def openai_style_with_key(payload: dict, override: dict) -> str:
@@ -535,14 +596,14 @@ class Handler(BaseHTTPRequestHandler):
             analyst = payload.get("analysis_mode") == "analyst"
             override_provider, override_summary = provider_override(payload)
             if override_summary:
-                result = {"analysis": normalize_analysis(parse_json_object(override_summary), payload), "provider": override_provider} if analyst else {
+                result = {"analysis": normalized_provider_analysis(override_summary, payload), "provider": override_provider} if analyst else {
                     "summary": override_summary,
                     "provider": override_provider,
                 }
             elif engine == "auto":
                 provider, summary = auto_provider(payload)
                 if summary:
-                    result = {"analysis": normalize_analysis(parse_json_object(summary), payload), "provider": provider} if analyst else {
+                    result = {"analysis": normalized_provider_analysis(summary, payload), "provider": provider} if analyst else {
                         "summary": summary,
                         "provider": provider,
                     }
@@ -555,16 +616,16 @@ class Handler(BaseHTTPRequestHandler):
                 result = {"analysis": normalize_analysis(local_analyst(payload), payload)}
             elif engine == "openai-compatible":
                 summary = openai_compatible(payload)
-                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
+                result = {"analysis": normalized_provider_analysis(summary, payload)} if analyst else {"summary": summary}
             elif engine == "minimax-compatible":
                 summary = minimax_compatible(payload)
-                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
+                result = {"analysis": normalized_provider_analysis(summary, payload)} if analyst else {"summary": summary}
             elif engine == "anthropic-compatible":
                 summary = anthropic_compatible(payload)
-                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
+                result = {"analysis": normalized_provider_analysis(summary, payload)} if analyst else {"summary": summary}
             elif engine == "ollama":
                 summary = ollama(payload)
-                result = {"analysis": normalize_analysis(parse_json_object(summary), payload)} if analyst else {"summary": summary}
+                result = {"analysis": normalized_provider_analysis(summary, payload)} if analyst else {"summary": summary}
             else:
                 summary = local_summary(payload)
                 result = {"summary": summary}

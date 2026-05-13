@@ -202,6 +202,15 @@ const ANALYSIS_CONTRACT = {
   ],
 };
 
+const ALLOWED_INTENTS = new Set([
+  "source_conflict_check",
+  "policy_and_regulatory_read",
+  "macro_narrative_read",
+  "company_language_read",
+  "sector_theme_read",
+  "broad_market_narrative_scan",
+]);
+
 let corpus = [];
 let activeEvidence = [];
 let latestLiveHealth = [];
@@ -657,6 +666,9 @@ function keyQuestionTerms(question = "") {
     "change",
     "market",
     "narrative",
+    "today",
+    "daily",
+    "across",
     "analysis",
     "analyze",
     "public",
@@ -725,7 +737,9 @@ function normalizeAnalystJson(analysis, plan, evidence, sourceConflicts) {
     "market_relevance",
     "evidence_citations",
   ];
-  normalized.question_intent = normalized.question_intent || plan.intent;
+  normalized.question_intent = ALLOWED_INTENTS.has(normalized.question_intent)
+    ? normalized.question_intent
+    : plan.intent;
   normalized.analysis_plan = normalized.analysis_plan && typeof normalized.analysis_plan === "object"
     ? { ...plan, ...normalized.analysis_plan }
     : plan;
@@ -1195,8 +1209,8 @@ async function runSelectedEngine() {
   const question = $("questionBox").value;
   const askButton = $("askButton");
   askButton.disabled = true;
-  askButton.textContent = "Analyzing...";
-  showStatus("Refreshing public sources in the background...");
+  askButton.textContent = "Generating...";
+  showStatus("Refreshing today's public sources...");
   await refreshLiveCorpusForQuestion(question);
   const docs = filteredCorpus();
   const evidence = retrieveEvidence(docs, question);
@@ -1209,7 +1223,7 @@ async function runSelectedEngine() {
     askButton.textContent = "Analyze";
     return;
   }
-  $("briefOutput").innerHTML = "<p><strong>Running analyst engine:</strong> analyzing retrieved public evidence.</p>";
+  $("briefOutput").innerHTML = "<p><strong>Running daily analyst engine:</strong> interpreting retrieved public evidence.</p>";
   $("analystOutput").innerHTML = "";
 
   const analysisController = new AbortController();
@@ -1262,7 +1276,7 @@ async function runSelectedEngine() {
   } finally {
     window.clearTimeout(analysisTimeout);
     askButton.disabled = false;
-    askButton.textContent = "Analyze";
+    askButton.textContent = "Generate brief";
   }
 }
 

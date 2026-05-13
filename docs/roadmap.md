@@ -24,5 +24,7 @@ Market Narrative Radar is structured so the static app can grow into a hosted re
 - Backend relay authentication.
 - Citation export to Markdown.
 - Evidence diff between two dates or source groups.
+- Hosted daily brief checkout, for example a simple `$1` per generated daily brief demo unit.
+- Optional open-ended question mode for personal research use after the daily brief workflow is stable.
 - GitHub Pages demo plus optional hosted backend.
 - Test suite for ingestion workers and browser functions.
