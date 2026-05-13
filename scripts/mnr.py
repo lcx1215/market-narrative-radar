@@ -193,6 +193,16 @@ def start_all(restart: bool) -> None:
     status()
 
 
+def open_app(restart: bool) -> None:
+    start_all(restart)
+    url = f"http://127.0.0.1:{STATIC_PORT}"
+    if sys.platform == "darwin":
+        subprocess.run(["open", url], cwd=ROOT, check=False)
+    else:
+        print_line(f"open: {url}")
+    print_line(f"ready: {url}")
+
+
 def stop_all() -> None:
     for name in reversed(list(SERVICES)):
         stop_service(name)
@@ -328,6 +338,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     start_parser = sub.add_parser("start")
     start_parser.add_argument("--restart", action="store_true")
+    open_parser = sub.add_parser("open")
+    open_parser.add_argument("--restart", action="store_true")
     sub.add_parser("stop")
     sub.add_parser("status")
     test_parser = sub.add_parser("test")
@@ -337,6 +349,8 @@ def main() -> None:
 
     if args.command == "start":
         start_all(args.restart)
+    elif args.command == "open":
+        open_app(args.restart)
     elif args.command == "stop":
         stop_all()
     elif args.command == "status":

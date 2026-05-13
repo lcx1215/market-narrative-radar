@@ -19,6 +19,8 @@ REQUIRED_FILES = [
     "data/live_corpus.json",
     "README.md",
     "LICENSE",
+    "Makefile",
+    "Open Market Narrative Radar.command",
     "docs/engines.md",
     "docs/replication_package.md",
     "docs/data_dictionary.md",
@@ -27,13 +29,13 @@ REQUIRED_FILES = [
     "docs/analyst_schema.md",
     "docs/course_methods_map.md",
     "docs/source_processing.md",
+    "docs/source_registry.md",
     "report/project_report.md",
     "scripts/build_corpus.py",
     "scripts/fetch_live_sources.py",
     "scripts/mnr.py",
     "server/llm_relay.py",
     "server/data_relay.py",
-    "Makefile",
     ".env.example",
 ]
 

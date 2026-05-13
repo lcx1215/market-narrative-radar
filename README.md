@@ -27,10 +27,18 @@ It is not a trading system. It does not forecast returns, produce price targets,
 
 ## Quick Demo
 
-Start the local product loop:
+On macOS, double-click:
+
+```text
+Open Market Narrative Radar.command
+```
+
+That starts the local services and opens the app.
+
+Command-line startup is also available:
 
 ```bash
-make restart
+make open
 ```
 
 Open:
@@ -200,6 +208,7 @@ make clean
 - `docs/course_methods_map.md`: mapping from course NLP methods to app features.
 - `docs/analysis_contract.md`: fixed RAG/tool/DAG reasoning contract.
 - `docs/source_processing.md`: source-aware cleaning and interpretation rules.
+- `docs/source_registry.md`: public-source registry and source health posture.
 - `docs/replication_package.md`: replication instructions.
 - `docs/data_dictionary.md`: data schema.
 - `docs/engines.md`: data and LLM engine documentation.

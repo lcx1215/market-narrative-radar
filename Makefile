@@ -1,4 +1,7 @@
-.PHONY: start restart stop status test test-provider clean validate
+.PHONY: open start restart stop status test test-provider clean validate
+
+open:
+	python3 scripts/mnr.py open
 
 start:
 	python3 scripts/mnr.py start
